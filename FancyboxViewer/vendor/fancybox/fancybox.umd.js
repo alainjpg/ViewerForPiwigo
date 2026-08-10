@@ -1,1 +1,0 @@
-// Fancybox JS placeholder
