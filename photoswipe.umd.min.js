@@ -1,1 +1,0 @@
-Konfigurierbarer Fancybox- oder PhotoSwipe-Viewer
