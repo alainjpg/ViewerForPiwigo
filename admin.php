@@ -22,6 +22,7 @@ if (isset($_POST['submit'])) {
         'load_full_album'      => isset($_POST['load_full_album']),
         'show_caption'         => isset($_POST['show_caption']),
         'show_description'     => isset($_POST['show_description']),
+        'show_author'          => isset($_POST['show_author']),
         'hide_auto_names'      => isset($_POST['hide_auto_names']),
         'page_link'            => isset($_POST['page_link']),
         'open_new_tab'         => isset($_POST['open_new_tab']),
@@ -29,7 +30,9 @@ if (isset($_POST['submit'])) {
         'enable_zoom'          => isset($_POST['enable_zoom']),
         'enable_fullscreen'    => isset($_POST['enable_fullscreen']),
 		'show_thumb_button'    => isset($_POST['show_thumb_button']),
+		'thumbs_on_start'      => isset($_POST['thumbs_on_start']),
         'enable_slideshow'     => isset($_POST['enable_slideshow']),
+        'disable_slideshow_autoplay' => isset($_POST['disable_slideshow_autoplay']),
         'infinite'             => isset($_POST['infinite']),
         'slideshow_timeout'	   => isset($_POST['slideshow_timeout']) ? (int) $_POST['slideshow_timeout'] : 3000,
         'max_items_limit'      => isset($_POST['max_items_limit']) ? (int)$_POST['max_items_limit'] : 500,
@@ -41,26 +44,26 @@ if (isset($_POST['submit'])) {
     );
 
     // Troisième paramètre true pour forcer le rafraîchissement immédiat du cache
-    conf_update_param('fancybox_viewer', fancybox_viewer_serialize($config), true);
+    conf_update_param('viewerforpiwigo', viewerforpiwigo_serialize($config), true);
 
     // Important : conf_update_param() écrit en base mais ne met pas à jour
     // le tableau global $conf pour la requête en cours, donc sans cette
     // ligne le formulaire se réaffichait avec les anciennes valeurs juste
     // après l'enregistrement (d'où l'impression qu'il fallait valider deux
     // fois pour que ça prenne effet).
-    $conf['fancybox_viewer'] = fancybox_viewer_serialize($config);
+    $conf['viewerforpiwigo'] = viewerforpiwigo_serialize($config);
 
     $page['infos'][] = l10n('Information data registered');
 }
 
-$raw_conf = isset($conf['fancybox_viewer']) ? $conf['fancybox_viewer'] : null;
+$raw_conf = isset($conf['viewerforpiwigo']) ? $conf['viewerforpiwigo'] : null;
 
 $config = $raw_conf
-    ? fancybox_viewer_unserialize($raw_conf)
-    : fancybox_viewer_get_default_config();
+    ? viewerforpiwigo_unserialize($raw_conf)
+    : viewerforpiwigo_get_default_config();
 
 $config = array_merge(
-    fancybox_viewer_get_default_config(),
+    viewerforpiwigo_get_default_config(),
     $config
 );
 
@@ -76,10 +79,10 @@ while ($row = pwg_db_fetch_assoc($result)) {
 }
 
 $template->assign(array(
-    'conf_fancybox' => $config,
+    'conf_viewerforpiwigo' => $config,
     'categories' => $categories,
     'PWG_TOKEN' => get_pwg_token(),
-    'FANCYBOX_ADMIN_ACTION' => get_root_url() . 'admin.php?page=plugin-' . $plugin_dir
+    'VIEWERFORPIWIGO_ADMIN_ACTION' => get_root_url() . 'admin.php?page=plugin-' . $plugin_dir
 ));
 
 $template->set_filename('plugin_admin_content', dirname(__FILE__) . '/admin.tpl');

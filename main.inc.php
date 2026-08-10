@@ -1,23 +1,23 @@
 <?php
 /*
 Plugin Name: ViewerForPiwigo
-Version: 0.0.4 BETA
-Description: Configurable Fancybox or PhotoSwipe viewer for photos, slideshows and videos.
-Author: AJPG
+Version: 1.0.0
+Description: Configurable Fancybox or PhotoSwipe viewer
+Author: Alain.jpg
 Has Settings: true
 
 */
 
 if (!defined('PHPWG_ROOT_PATH')) die('Hacking attempt!');
 
-define('FANCYBOX_VIEWER_PATH', PHPWG_PLUGINS_PATH . basename(dirname(__FILE__)) . '/');
+define('VIEWERFORPIWIGO_PATH', PHPWG_PLUGINS_PATH . basename(dirname(__FILE__)) . '/');
 
-load_language('plugin.lang', FANCYBOX_VIEWER_PATH);
+load_language('plugin.lang', VIEWERFORPIWIGO_PATH);
 
-add_event_handler('get_admin_plugin_menu_links', 'fancybox_viewer_admin_menu');
+add_event_handler('get_admin_plugin_menu_links', 'viewerforpiwigo_admin_menu');
 
 if (defined('IN_ADMIN')) {
-    function fancybox_viewer_admin_menu($menu)
+    function viewerforpiwigo_admin_menu($menu)
     {
         $menu[] = array(
             'NAME' => 'ViewerForPiwigo',
@@ -28,7 +28,7 @@ if (defined('IN_ADMIN')) {
     }
 }
 
-function fancybox_viewer_get_default_config() {
+function viewerforpiwigo_get_default_config() {
     return array(
 		'mobile_only' => false,
         'fancybox_source'      => 'cdn',
@@ -38,7 +38,8 @@ function fancybox_viewer_get_default_config() {
 		'open_from_slideshow'  => true,
         'load_full_album'      => true,
         'show_caption'         => true,
-        'show_description'     => true,
+        'show_description'     => false,
+        'show_author'          => false,
         'hide_auto_names'      => true,
         'page_link'            => true,
         'open_new_tab'         => false,
@@ -46,7 +47,9 @@ function fancybox_viewer_get_default_config() {
         'enable_zoom'          => false,
         'enable_fullscreen'    => true,
 		'show_thumb_button'  	=> true,
+		'thumbs_on_start'      => true,
         'enable_slideshow'     => true,
+        'disable_slideshow_autoplay' => false,
         'infinite'             => true,
 		'slideshow_timeout' => 3000,
 
@@ -60,26 +63,26 @@ function fancybox_viewer_get_default_config() {
     );
 }
 
-function fancybox_viewer_serialize($data) {
+function viewerforpiwigo_serialize($data) {
     return function_exists('safe_serialize') ? safe_serialize($data) : serialize($data);
 }
 
-function fancybox_viewer_unserialize($data) {
+function viewerforpiwigo_unserialize($data) {
     if (empty($data)) return array();
     return function_exists('safe_unserialize') ? safe_unserialize($data) : @unserialize($data);
 }
 
-add_event_handler('loc_end_page_header', 'fancybox_viewer_inject');
+add_event_handler('loc_end_page_header', 'viewerforpiwigo_inject');
 
-function fancybox_viewer_inject() {
+function viewerforpiwigo_inject() {
     global $page, $template, $conf;
 
-	$config = isset($conf['fancybox_viewer'])
-		? fancybox_viewer_unserialize($conf['fancybox_viewer'])
-		: fancybox_viewer_get_default_config();
+	$config = isset($conf['viewerforpiwigo'])
+		? viewerforpiwigo_unserialize($conf['viewerforpiwigo'])
+		: viewerforpiwigo_get_default_config();
 
 	$config = array_merge(
-		fancybox_viewer_get_default_config(),
+		viewerforpiwigo_get_default_config(),
 		$config
 	);
 
@@ -148,7 +151,7 @@ if (!empty($config['load_full_album']) || !empty($config['open_from_slideshow'])
     if (!empty($items)) {
         $clean_ids = implode(',', array_map('intval', $items));
         $query = '
-        SELECT id, file, name, comment, path, width, height, rotation
+        SELECT id, file, name, comment, author, path, width, height, rotation
           FROM ' . IMAGES_TABLE . '
           WHERE id IN (' . $clean_ids . ')
           ORDER BY FIELD(id, ' . $clean_ids . ')
@@ -205,6 +208,7 @@ if (!empty($config['load_full_album']) || !empty($config['open_from_slideshow'])
                 'page_url'     => $page_url,
                 'name'         => isset($row['name']) ? $row['name'] : '',
                 'comment'      => isset($row['comment']) ? $row['comment'] : '',
+                'author'       => isset($row['author']) ? $row['author'] : '',
                 'file'         => isset($row['file']) ? $row['file'] : '',
                 'width'        => $img_width,
                 'height'       => $img_height,
@@ -222,8 +226,8 @@ if (!empty($config['load_full_album']) || !empty($config['open_from_slideshow'])
 
     if ('photoswipe' === $viewer_engine) {
         if (isset($config['photoswipe_source']) && $config['photoswipe_source'] === 'local') {
-            $viewer_css = FANCYBOX_VIEWER_PATH . 'vendor/photoswipe/photoswipe.css';
-            $viewer_js  = FANCYBOX_VIEWER_PATH . 'vendor/photoswipe/photoswipe.umd.min.js';
+            $viewer_css = VIEWERFORPIWIGO_PATH . 'vendor/photoswipe/photoswipe.css';
+            $viewer_js  = VIEWERFORPIWIGO_PATH . 'vendor/photoswipe/photoswipe.umd.min.js';
         } else {
             $viewer_css = 'https://cdn.jsdelivr.net/npm/photoswipe@5.4.4/dist/photoswipe.css';
             $viewer_js  = 'https://cdn.jsdelivr.net/npm/photoswipe@5.4.4/dist/umd/photoswipe.umd.min.js';
@@ -233,28 +237,29 @@ if (!empty($config['load_full_album']) || !empty($config['open_from_slideshow'])
             $viewer_css = 'https://cdn.jsdelivr.net/npm/@fancyapps/ui@6.1.14/dist/fancybox/fancybox.css';
             $viewer_js  = 'https://cdn.jsdelivr.net/npm/@fancyapps/ui@6.1.14/dist/fancybox/fancybox.umd.js';
         } else {
-            $viewer_css = FANCYBOX_VIEWER_PATH . 'vendor/fancybox/fancybox.css';
-            $viewer_js  = FANCYBOX_VIEWER_PATH . 'vendor/fancybox/fancybox.umd.js';
+            $viewer_css = VIEWERFORPIWIGO_PATH . 'vendor/fancybox/fancybox.css';
+            $viewer_js  = VIEWERFORPIWIGO_PATH . 'vendor/fancybox/fancybox.umd.js';
         }
     }
 
     $html_head = '
     <link rel="stylesheet" href="' . $viewer_css . '" />
-    <link rel="stylesheet" href="' . FANCYBOX_VIEWER_PATH . 'css/fancybox-viewer.css" />
+    <link rel="stylesheet" href="' . VIEWERFORPIWIGO_PATH . 'css/viewerforpiwigo.css" />
     <script src="' . $viewer_js . '"></script>
     <script type="text/javascript">
-var FANCYBOX_VIEWER_DATA = ' . json_encode(array(
+var VIEWERFORPIWIGO_DATA = ' . json_encode(array(
     'config'           => $config,
     'category_id'      => $category_id,
 	'current_image_id' => isset($page['image_id']) ? (int)$page['image_id'] : 0,
 	'items'            => $images_data,
     'lang'             => array(
         'page_link' => l10n('Open the photo page'),
-        'autoplay'  => l10n('Start / Stop slideshow')
+        'autoplay'  => l10n('Start / Stop slideshow'),
+        'see_more'  => l10n('See more')
     )
 )) . ';
     </script>
-    <script type="text/javascript" src="' . FANCYBOX_VIEWER_PATH . 'js/fancybox-viewer.js"></script>
+    <script type="text/javascript" src="' . VIEWERFORPIWIGO_PATH . 'js/viewerforpiwigo.js"></script>
     ';
 
     $template->append('head_elements', $html_head);

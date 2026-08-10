@@ -8,15 +8,15 @@ class ViewerForPiwigo_maintain extends PluginMaintain {
         
         $dir = basename(dirname(__FILE__));
         include_once(PHPWG_PLUGINS_PATH . $dir . '/main.inc.php');
-        $default_config = fancybox_viewer_get_default_config();
+        $default_config = viewerforpiwigo_get_default_config();
 
-        if (empty($conf['fancybox_viewer'])) {
-            $serialized = fancybox_viewer_serialize($default_config);
-            conf_update_param('fancybox_viewer', $serialized);
+        if (empty($conf['viewerforpiwigo'])) {
+            $serialized = viewerforpiwigo_serialize($default_config);
+            conf_update_param('viewerforpiwigo', $serialized);
         }
     }
 
     public function uninstall() {
-        conf_delete_param('fancybox_viewer');
+        conf_delete_param('viewerforpiwigo');
     }
 }

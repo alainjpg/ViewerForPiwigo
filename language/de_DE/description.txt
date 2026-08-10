@@ -1,1 +1,1 @@
-Konfigurierbarer Fancybox- oder PhotoSwipe-Viewer für Fotos, Diashows und Videos.
+Konfigurierbarer Fancybox- oder PhotoSwipe-Viewer

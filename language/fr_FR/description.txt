@@ -1,1 +1,1 @@
-Visionneuse Fancybox ou PhotoSwipe configurable pour les photos, diaporamas et vidéos.
+Visionneuse Fancybox ou PhotoSwipe configurable

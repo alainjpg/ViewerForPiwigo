@@ -1,12 +1,16 @@
 document.addEventListener("DOMContentLoaded", function () {
-    const rawConfig = (typeof FANCYBOX_VIEWER_DATA !== "undefined" && FANCYBOX_VIEWER_DATA.config) ? FANCYBOX_VIEWER_DATA.config : {};
+    const rawConfig = (typeof VIEWERFORPIWIGO_DATA !== "undefined" && VIEWERFORPIWIGO_DATA.config) ? VIEWERFORPIWIGO_DATA.config : {};
 
     const config = {
         enable_autoplay: rawConfig.enable_slideshow !== false,
+        disable_autoplay: rawConfig.disable_slideshow_autoplay === true,
         enable_download: rawConfig.enable_download !== false,
         enable_zoom: rawConfig.enable_zoom !== false,
         enable_fullscreen: rawConfig.enable_fullscreen !== false,
         show_thumb_button: rawConfig.show_thumb_button !== false,
+        thumbs_on_start: rawConfig.thumbs_on_start !== false,
+        show_description: rawConfig.show_description === true,
+        show_author: rawConfig.show_author === true,
         page_link: rawConfig.page_link !== false && rawConfig.show_page_link !== false,
         open_new_tab: rawConfig.open_new_tab !== false,
 		open_from_thumbnails: rawConfig.open_from_thumbnails !== false,
@@ -66,15 +70,70 @@ document.addEventListener("DOMContentLoaded", function () {
         if (/^Capture d[’']écran.*$/i.test(text)) return true;
         if (/^\d{8,}[ _-][a-f0-9]{6,}$/i.test(text)) return true;
         if (/^[\d _-]+$/.test(text)) return true;
+        // Format "YYYYMMDD HHMMSS" avec suffixe optionnel "~N" (ex: doublons
+        // exportes par certaines galeries/synchronisations).
+        if (/^\d{8} \d{6}(~\d+)?$/.test(text)) return true;
 
         return false;
     }
-	function buildFancyboxItems() {
+    // Longueur approximative au dela de laquelle une description est
+    // consideree "longue" et donc visuellement tronquee (voir CSS ligne-clamp)
+    // avec un lien "Voir plus" vers la page photo Piwigo.
+    const DESCRIPTION_TRUNCATE_THRESHOLD = 200;
 
-		return FANCYBOX_VIEWER_DATA.items.map(item => {
+    function escapeHtml(str) {
+        const div = document.createElement("div");
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    // Construit le HTML titre/auteur/description commun aux deux moteurs, en
+    // reutilisant les classes .vfp-title/.vfp-description deja
+    // presentes dans le CSS du plugin.
+    function buildCaptionHtml(title, author, description, pageUrl) {
+        let html = "";
+
+        if (title || author) {
+            html += '<div class="vfp-title">';
+            if (title) html += escapeHtml(title);
+            if (author) html += ' <span class="vfp-author">(' + escapeHtml(author) + ')</span>';
+            html += '</div>';
+        }
+
+        if (description) {
+            const isLong = description.length > DESCRIPTION_TRUNCATE_THRESHOLD;
+            html += '<div class="vfp-description' + (isLong ? ' vfp-description-clamped' : '') + '">' + escapeHtml(description) + '</div>';
+            if (isLong && pageUrl) {
+                const seeMoreText = (typeof VIEWERFORPIWIGO_DATA !== "undefined" && VIEWERFORPIWIGO_DATA.lang && VIEWERFORPIWIGO_DATA.lang.see_more) ? VIEWERFORPIWIGO_DATA.lang.see_more : "See more";
+                html += '<a class="vfp-see-more" href="' + pageUrl + '">' + escapeHtml(seeMoreText) + '</a>';
+            }
+        }
+
+        return html;
+    }
+
+	function buildViewerItems() {
+
+		return VIEWERFORPIWIGO_DATA.items.map(item => {
 
 			let caption = item.name || item.comment || "";
 			if (isAutomaticFilename(caption)) caption = "";
+
+			// Description : uniquement si l'option est activee, et seulement
+			// si elle apporte une information distincte du titre deja affiche
+			// (evite d'afficher deux fois le meme texte quand le commentaire
+			// sert deja de repli pour le titre ci-dessus).
+			let description = "";
+			if (config.show_description && item.comment && item.comment.trim() && item.comment !== caption) {
+				description = item.comment.trim();
+			}
+
+			let author = "";
+			if (config.show_author && item.author && item.author.trim()) {
+				author = item.author.trim();
+			}
+
+			const captionHtml = buildCaptionHtml(caption, author, description, item.page_url);
 
 			// Embedded Videos
 			if (item.video_type) {
@@ -106,7 +165,8 @@ document.addEventListener("DOMContentLoaded", function () {
 					thumbSrc: item.src,
 					src: src,
 					type: "iframe",
-					caption: caption,
+					caption: captionHtml,
+					plainCaption: caption,
 					pageUrl: item.page_url
 				};
 			}
@@ -119,7 +179,8 @@ document.addEventListener("DOMContentLoaded", function () {
 					thumbSrc: item.src,
 					src: item.download_src,
 					type: "html5video",
-					caption: caption,
+					caption: captionHtml,
+					plainCaption: caption,
 					downloadSrc: item.download_src,
 					pageUrl: item.page_url
 				};
@@ -132,7 +193,8 @@ document.addEventListener("DOMContentLoaded", function () {
 				src: item.src,
 				width: item.width || 0,
 				height: item.height || 0,
-				caption: caption,
+				caption: captionHtml,
+				plainCaption: caption,
 				downloadSrc: item.download_src,
 				pageUrl: item.page_url
 			};
@@ -160,28 +222,39 @@ document.addEventListener("DOMContentLoaded", function () {
 
 	const thumbnailLinks = document.querySelectorAll("#thumbnails a, .thumbnails a");
 
-	function isFancyboxAllowed() {
+	function isViewerAllowed() {
 		return !config.mobile_only ||
 			window.matchMedia("(max-width: 1024px)").matches;
 	}
 
-	if (isFancyboxAllowed() && config.open_from_thumbnails && thumbnailLinks.length > 0) {        thumbnailLinks.forEach((a, index) => {
+	if (isViewerAllowed() && config.open_from_thumbnails && thumbnailLinks.length > 0) {        thumbnailLinks.forEach((a, index) => {
             a.addEventListener("click", function (e) {
                 e.preventDefault();
 
                 if (
                     config.load_full_album &&
-                    typeof FANCYBOX_VIEWER_DATA !== "undefined" &&
-                    FANCYBOX_VIEWER_DATA.items &&
-                    FANCYBOX_VIEWER_DATA.items.length > 0
+                    typeof VIEWERFORPIWIGO_DATA !== "undefined" &&
+                    VIEWERFORPIWIGO_DATA.items &&
+                    VIEWERFORPIWIGO_DATA.items.length > 0
                 ) {
-                    const items = buildFancyboxItems();
+                    const items = buildViewerItems();
 
                     const clickedImg = a.querySelector("img");
                     const clickedSrc = clickedImg ? (clickedImg.dataset.src || clickedImg.src) : "";
                     let startIndex = index;
 
-                    if (clickedSrc) {
+                    // Correspondance primaire : par ID Piwigo (toujours unique,
+                    // extrait du href de la miniature). Necessaire notamment
+                    // quand plusieurs photos de l'album partagent le meme
+                    // prefixe de nom de fichier (ex. import par lot, meme
+                    // horodatage de generation de derivee a la seconde pres) :
+                    // dans ce cas, une correspondance par nom de fichier seule
+                    // retombe systematiquement sur la premiere photo trouvee.
+                    const linkId = extractImageIdFromHref(a.href);
+                    if (linkId !== null) {
+                        const idIdx = items.findIndex(item => item.id === linkId);
+                        if (idIdx !== -1) startIndex = idIdx;
+                    } else if (clickedSrc) {
                         const filename = clickedSrc.split('/').pop().split('-')[0];
                         const foundIdx = items.findIndex(item => item.src.includes(filename));
                         if (foundIdx !== -1) startIndex = foundIdx;
@@ -189,13 +262,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     launchViewer(items, startIndex);
                 } else {
-                    launchLocalFancybox(index);
+                    launchLocalViewer(index);
                 }
             });
         });
     }
 	function getCurrentImageIndex(items) {
-    const currentId = parseInt(FANCYBOX_VIEWER_DATA.current_image_id, 10);
+    const currentId = parseInt(VIEWERFORPIWIGO_DATA.current_image_id, 10);
 
     const index = items.findIndex(item => item.id === currentId);
 
@@ -205,20 +278,20 @@ document.addEventListener("DOMContentLoaded", function () {
 		"#cmdSlideshow a, a[href*='slideshow=']"
 	);
 
-	if (isFancyboxAllowed() && config.open_from_slideshow && slideshowButtons.length > 0) {
+	if (isViewerAllowed() && config.open_from_slideshow && slideshowButtons.length > 0) {
 		slideshowButtons.forEach(function (button) {
 			button.addEventListener("click", function (e) {
 				e.preventDefault();
 
 				if (
-					typeof FANCYBOX_VIEWER_DATA === "undefined" ||
-					!FANCYBOX_VIEWER_DATA.items ||
-					!FANCYBOX_VIEWER_DATA.items.length
+					typeof VIEWERFORPIWIGO_DATA === "undefined" ||
+					!VIEWERFORPIWIGO_DATA.items ||
+					!VIEWERFORPIWIGO_DATA.items.length
 				) {
 					return;
 				}
 
-				const items = buildFancyboxItems();
+				const items = buildViewerItems();
 
 				const startIndex = getCurrentImageIndex(items);
 
@@ -233,7 +306,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	}
     const pictureImage = document.getElementById("theMainImage");
 
-	if (isFancyboxAllowed() && config.open_from_picture && pictureImage) {
+	if (isViewerAllowed() && config.open_from_picture && pictureImage) {
         pictureImage.style.cursor = "zoom-in";
 
         pictureImage.addEventListener("click", function (e) {
@@ -242,18 +315,18 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!config.load_full_album) {
                 // Meme quand on ne charge pas tout l'album, les dimensions reelles
                 // de la photo courante sont deja disponibles cote serveur
-                // (FANCYBOX_VIEWER_DATA.items contient toujours au moins la photo
+                // (VIEWERFORPIWIGO_DATA.items contient toujours au moins la photo
                 // affichee). On les utilise pour eviter le ratio 4/3 par defaut de
                 // PhotoSwipe. Si elles ne sont pas disponibles, on retombe sur
                 // l'ancien comportement (deduit du DOM) sans rien casser.
                 let serverItem = null;
                 if (
-                    typeof FANCYBOX_VIEWER_DATA !== "undefined" &&
-                    FANCYBOX_VIEWER_DATA.items &&
-                    FANCYBOX_VIEWER_DATA.items.length
+                    typeof VIEWERFORPIWIGO_DATA !== "undefined" &&
+                    VIEWERFORPIWIGO_DATA.items &&
+                    VIEWERFORPIWIGO_DATA.items.length
                 ) {
-                    const serverItems = buildFancyboxItems();
-                    const currentId = parseInt(FANCYBOX_VIEWER_DATA.current_image_id, 10);
+                    const serverItems = buildViewerItems();
+                    const currentId = parseInt(VIEWERFORPIWIGO_DATA.current_image_id, 10);
                     serverItem = serverItems.find(item => item.id === currentId) || serverItems[0] || null;
                 }
 
@@ -279,14 +352,14 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             if (
-                typeof FANCYBOX_VIEWER_DATA === "undefined" ||
-                !FANCYBOX_VIEWER_DATA.items ||
-                !FANCYBOX_VIEWER_DATA.items.length
+                typeof VIEWERFORPIWIGO_DATA === "undefined" ||
+                !VIEWERFORPIWIGO_DATA.items ||
+                !VIEWERFORPIWIGO_DATA.items.length
             ) {
                 return;
             }
 
-            const items = buildFancyboxItems();
+            const items = buildViewerItems();
 
 			const startIndex = getCurrentImageIndex(items);
 
@@ -316,8 +389,16 @@ document.addEventListener("DOMContentLoaded", function () {
             Carousel: {
 			    
 				Autoplay: {
-					autoStart: !!forcePlay,
+					autoStart: !!forcePlay && !config.disable_autoplay,
 					timeout: timeoutVal
+				},
+
+				// "Afficher le bouton des miniatures" (show_thumb_button) est gere
+				// separement via le bouton de la Toolbar ci-dessous ; showOnStart
+				// ne controle que l'etat initial du carrousel de miniatures, sans
+				// desactiver le plugin ni son bouton (API native Fancybox 6).
+				Thumbs: {
+					showOnStart: config.thumbs_on_start
 				},
 
 				Toolbar: {
@@ -328,7 +409,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     },
                     items: {
                         pageLink: {
-							tpl: `<button class="f-button" title="${(typeof FANCYBOX_VIEWER_DATA !== "undefined" && FANCYBOX_VIEWER_DATA.lang && FANCYBOX_VIEWER_DATA.lang.page_link) ? FANCYBOX_VIEWER_DATA.lang.page_link : "Ouvrir la page de la photo"}" type="button">
+							tpl: `<button class="f-button" title="${(typeof VIEWERFORPIWIGO_DATA !== "undefined" && VIEWERFORPIWIGO_DATA.lang && VIEWERFORPIWIGO_DATA.lang.page_link) ? VIEWERFORPIWIGO_DATA.lang.page_link : "Ouvrir la page de la photo"}" type="button">
 								<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" style="vertical-align: middle;">
 									<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>
 									<path d="M12 11v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -358,12 +439,10 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // +-----------------------------------------------------------------------+
-    // | Moteur PhotoSwipe (0.0.3, experimental)                               |
+    // | Moteur PhotoSwipe                                                     |
     // |                                                                       |
-    // | Limitation connue : les videos (YouTube/Vimeo/Dailymotion/HTML5) ne   |
-    // | sont pas supportees par ce moteur pour l'instant ; elles sont         |
-    // | retirees de la liste plutot que d'afficher une vignette cassee. Un    |
-    // | clic sur une video ouvre alors simplement sa page Piwigo.             |
+    // | Les videos (YouTube/Vimeo/Dailymotion/HTML5) sont affichees via des   |
+    // | slides "html" natives de PhotoSwipe 5 (voir dataSource plus bas).     |
     // +-----------------------------------------------------------------------+
     let pswpInstance = null;
     let pswpAutoplayTimer = null;
@@ -443,7 +522,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     html: videoHtml,
                     width: item.width || 1280,
                     height: item.height || 720,
-                    alt: item.caption || "",
+                    alt: item.plainCaption || item.caption || "",
                     caption: item.caption || "",
                     pageUrl: item.pageUrl,
                     isVideo: true
@@ -454,7 +533,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 src: item.src,
                 width: item.width || 1600,
                 height: item.height || 1200,
-                alt: item.caption || "",
+                alt: item.plainCaption || item.caption || "",
                 caption: item.caption || "",
                 downloadSrc: item.downloadSrc,
                 pageUrl: item.pageUrl
@@ -489,7 +568,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     pswpInstance.on("change", () => {
                         const data = pswpInstance.currSlide && pswpInstance.currSlide.data;
                         const text = data && data.caption ? data.caption : "";
-                        el.textContent = text;
+                        el.innerHTML = text;
                         el.style.display = text ? "block" : "none";
                     });
                 }
@@ -502,7 +581,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     order: 8,
                     isButton: true,
                     tagName: "a",
-                    title: (typeof FANCYBOX_VIEWER_DATA !== "undefined" && FANCYBOX_VIEWER_DATA.lang && FANCYBOX_VIEWER_DATA.lang.page_link) ? FANCYBOX_VIEWER_DATA.lang.page_link : "Ouvrir la page de la photo",
+                    title: (typeof VIEWERFORPIWIGO_DATA !== "undefined" && VIEWERFORPIWIGO_DATA.lang && VIEWERFORPIWIGO_DATA.lang.page_link) ? VIEWERFORPIWIGO_DATA.lang.page_link : "Ouvrir la page de la photo",
                     html: {
                         isCustomSVG: true,
                         inner: '<circle cx="16" cy="16" r="10" fill="none" stroke="var(--pswp-icon-color, #fff)" stroke-width="2"/><path d="M16 14v8" fill="none" stroke="var(--pswp-icon-color, #fff)" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="10" r="1.5" fill="var(--pswp-icon-color, #fff)"/>',
@@ -579,7 +658,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     name: "fbv-autoplay",
                     order: 7,
                     isButton: true,
-                    title: (typeof FANCYBOX_VIEWER_DATA !== "undefined" && FANCYBOX_VIEWER_DATA.lang && FANCYBOX_VIEWER_DATA.lang.autoplay) ? FANCYBOX_VIEWER_DATA.lang.autoplay : "Start / Stop slideshow",
+                    title: (typeof VIEWERFORPIWIGO_DATA !== "undefined" && VIEWERFORPIWIGO_DATA.lang && VIEWERFORPIWIGO_DATA.lang.autoplay) ? VIEWERFORPIWIGO_DATA.lang.autoplay : "Start / Stop slideshow",
                     html: PSWP_ICON_PLAY,
                     onInit: (el) => {
                         pswpAutoplayBtnEl = el;
@@ -670,7 +749,7 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
 
-        if (forcePlay && dataSource.length > 1) {
+        if (forcePlay && !config.disable_autoplay && dataSource.length > 1) {
             pswpInstance.on("afterInit", () => {
                 pswpStartAutoplay();
             });
@@ -679,7 +758,7 @@ document.addEventListener("DOMContentLoaded", function () {
         pswpInstance.init();
     }
 
-    function launchLocalFancybox(startIndex) {
+    function launchLocalViewer(startIndex) {
         // Comme pour picture.php : si les donnees serveur sont disponibles pour
         // une miniature (memes quand load_full_album est desactive, Piwigo les
         // transmet deja pour les photos visibles sur la page), on les utilise
@@ -687,10 +766,10 @@ document.addEventListener("DOMContentLoaded", function () {
         // de PhotoSwipe). Sinon on retombe sur le comportement precedent
         // (deduit du DOM), sans rien casser.
         const serverItems = (
-            typeof FANCYBOX_VIEWER_DATA !== "undefined" &&
-            FANCYBOX_VIEWER_DATA.items &&
-            FANCYBOX_VIEWER_DATA.items.length
-        ) ? buildFancyboxItems() : [];
+            typeof VIEWERFORPIWIGO_DATA !== "undefined" &&
+            VIEWERFORPIWIGO_DATA.items &&
+            VIEWERFORPIWIGO_DATA.items.length
+        ) ? buildViewerItems() : [];
 
         const localItems = Array.from(thumbnailLinks).map(a => {
             const img = a.querySelector("img");

@@ -4,7 +4,7 @@ A Piwigo plugin providing a modern lightbox viewer based on **Fancybox** or **Ph
 
 The viewer can be configured for different uses: slideshow, album thumbnails, or the main photo.
 
-**Author:** AJPG
+**Author:** Alain.jpg
 
 ## Features
 
