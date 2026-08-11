@@ -1,0 +1,1 @@
+可配置的 Fancybox 或 PhotoSwipe 查看器
