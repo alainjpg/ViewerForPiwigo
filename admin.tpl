@@ -85,6 +85,15 @@
           <strong>{'Open the viewer from thumbnails'|@translate}</strong> {'(album page grid)'|@translate}
         </label>
       </li>
+      {if $osm_plugin_active}
+      <li>
+        <label>
+          <input type="checkbox" name="open_from_osm_map" value="1" {if !empty($conf_viewerforpiwigo.open_from_osm_map)}checked="checked"{/if}>
+          <strong>{'Open the viewer from map markers'|@translate}</strong>
+        </label>
+        <p class="vfp-help">{'Applies to the OpenStreetMap plugin thumbnail popups.'|@translate}</p>
+      </li>
+      {/if}
       <li>
         <label>
           <input type="checkbox" name="open_from_picture" value="1" {if !empty($conf_viewerforpiwigo.open_from_picture)}checked="checked"{/if}>

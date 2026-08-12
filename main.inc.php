@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: ViewerForPiwigo
-Version: 1.0.2
+Version: 1.1.0
 Description: Configurable Fancybox or PhotoSwipe viewer
 Author: Alain.jpg
 Has Settings: true
@@ -36,6 +36,7 @@ function viewerforpiwigo_get_default_config() {
         'open_from_thumbnails' => true,
         'open_from_picture'    => true,
 		'open_from_slideshow'  => true,
+		'open_from_osm_map'    => true,
         'load_full_album'      => true,
         'show_caption'         => true,
         'show_description'     => false,

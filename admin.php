@@ -6,6 +6,22 @@ global $template, $page, $conf;
 $plugin_dir = basename(dirname(__FILE__));
 include_once(PHPWG_PLUGINS_PATH . $plugin_dir . '/main.inc.php');
 
+// Detection du plugin OpenStreetMap : methode idiomatique Piwigo (verifier
+// une constante definie par ce plugin dans son propre main.inc.php, deja
+// charge a ce stade si le plugin est actif — meme principe que notre propre
+// VIEWERFORPIWIGO_PATH).
+$viewerforpiwigo_osm_active = defined('OSM_PATH');
+
+// Valeur precedemment enregistree, nécessaire pour ne pas ecraser le
+// reglage OSM par "false" si le formulaire est sauvegarde alors que le
+// plugin OSM n'est pas actif (la case n'existe alors pas dans le
+// formulaire, donc absente de $_POST — ne pas la confondre avec un choix
+// explicite de decocher).
+$viewerforpiwigo_prev_raw = isset($conf['viewerforpiwigo']) ? $conf['viewerforpiwigo'] : null;
+$viewerforpiwigo_prev_config = $viewerforpiwigo_prev_raw
+    ? viewerforpiwigo_unserialize($viewerforpiwigo_prev_raw)
+    : viewerforpiwigo_get_default_config();
+
 if (isset($_POST['submit'])) {
     check_pwg_token();
 
@@ -19,6 +35,9 @@ if (isset($_POST['submit'])) {
         'open_from_thumbnails' => isset($_POST['open_from_thumbnails']),
         'open_from_picture'    => isset($_POST['open_from_picture']),
 		'open_from_slideshow'  => isset($_POST['open_from_slideshow']),      
+		'open_from_osm_map'    => $viewerforpiwigo_osm_active
+		    ? isset($_POST['open_from_osm_map'])
+		    : (isset($viewerforpiwigo_prev_config['open_from_osm_map']) ? $viewerforpiwigo_prev_config['open_from_osm_map'] : true),
         'load_full_album'      => isset($_POST['load_full_album']),
         'show_caption'         => isset($_POST['show_caption']),
         'show_description'     => isset($_POST['show_description']),
@@ -119,6 +138,7 @@ $template->assign(array(
     'conf_viewerforpiwigo' => $config,
     'categories' => $categories,
     'available_sizes' => $available_sizes,
+    'osm_plugin_active' => $viewerforpiwigo_osm_active,
     'PWG_TOKEN' => get_pwg_token(),
     'VIEWERFORPIWIGO_ADMIN_ACTION' => get_root_url() . 'admin.php?page=plugin-' . $plugin_dir
 ));

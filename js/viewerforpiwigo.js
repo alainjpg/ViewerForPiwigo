@@ -16,6 +16,7 @@ document.addEventListener("DOMContentLoaded", function () {
 		open_from_thumbnails: rawConfig.open_from_thumbnails !== false,
 		open_from_picture: rawConfig.open_from_picture !== false,
 		open_from_slideshow: rawConfig.open_from_slideshow === true,
+		open_from_osm_map: rawConfig.open_from_osm_map !== false,
 		load_full_album: rawConfig.load_full_album !== false,
 		mobile_only: rawConfig.mobile_only === true,
 		// --- Choix du moteur de visionneuse (0.0.3, experimental) ---
@@ -814,5 +815,67 @@ document.addEventListener("DOMContentLoaded", function () {
         }).filter(Boolean);
 
         launchViewer(localItems, startIndex);
+    }
+
+    // Ouverture depuis les popups de miniatures du plugin OpenStreetMap
+    // (piwigo-openstreetmap), si installe et si l'option est activee.
+    // Ces popups sont injectees dynamiquement par Leaflet au clic sur un
+    // marqueur (jamais presentes au chargement de la page) : une delegation
+    // d'evenements sur le document est donc necessaire, contrairement au
+    // scan ponctuel utilise pour les miniatures classiques de l'album.
+    // Structure de popup confirmee via le code source du plugin OSM
+    // (include/functions_map.php, fonction osm_get_js(), partagee par
+    // toutes ses cartes) : <div class="leaflet-popup-content">...<a href=
+    // "picture.php?/ID/..."><img ...></a>...</div> — la classe
+    // "leaflet-popup-content" vient de Leaflet lui-meme (stable), pas du
+    // plugin OSM (dont les id="thumb-N" sont indexes, donc plus fragiles).
+    if (isViewerAllowed() && config.open_from_osm_map) {
+        document.addEventListener("click", function (e) {
+            const link = e.target.closest(".leaflet-popup-content a");
+            if (!link) return;
+
+            const img = link.querySelector("img");
+            const linkId = extractImageIdFromHref(link.href);
+
+            // Ni ID extractible ni image : probablement pas une popup photo
+            // (ex. popup GPX du meme plugin) — on ne s'en mele pas.
+            if (linkId === null && !img) return;
+
+            e.preventDefault();
+
+            let items = null;
+            let startIndex = 0;
+
+            if (
+                linkId !== null &&
+                typeof VIEWERFORPIWIGO_DATA !== "undefined" &&
+                VIEWERFORPIWIGO_DATA.items &&
+                VIEWERFORPIWIGO_DATA.items.length
+            ) {
+                const serverItems = buildViewerItems();
+                const idx = serverItems.findIndex(item => item.id === linkId);
+                if (idx !== -1) {
+                    items = serverItems;
+                    startIndex = idx;
+                }
+            }
+
+            if (!items) {
+                // Repli : photo absente des donnees deja chargees pour cette
+                // page (cas frequent d'un marqueur pointant vers une photo
+                // d'un sous-album). Item minimal construit directement
+                // depuis le contenu de la popup, meme principe que le repli
+                // de launchLocalViewer ci-dessus.
+                const thumbSrc = img ? (img.dataset.src || img.src) : "";
+                items = [{
+                    src: getLargeImage(thumbSrc) || thumbSrc,
+                    caption: "",
+                    downloadSrc: getOriginalImage(thumbSrc),
+                    pageUrl: link.href
+                }];
+            }
+
+            launchViewer(items, startIndex);
+        });
     }
 });
