@@ -60,10 +60,9 @@
       <li>
         <label><strong>{'Image display size:'|@translate}</strong>
           <select name="image_size">
-            <option value="medium" {if $conf_viewerforpiwigo.image_size == 'medium'}selected="selected"{/if}>{'Medium'|@translate}</option>
-            <option value="large" {if $conf_viewerforpiwigo.image_size == 'large'}selected="selected"{/if}>{'Large'|@translate}</option>
-            <option value="xlarge" {if $conf_viewerforpiwigo.image_size == 'xlarge'}selected="selected"{/if}>{'XLarge'|@translate}</option>
-            <option value="xxlarge" {if $conf_viewerforpiwigo.image_size == 'xxlarge'}selected="selected"{/if}>{'XXLarge'|@translate}</option>
+            {foreach from=$available_sizes item=vfp_size_type}
+            <option value="{$vfp_size_type}" {if $conf_viewerforpiwigo.image_size == $vfp_size_type}selected="selected"{/if}>{if $vfp_size_type == 'medium'}{'Medium'|@translate}{elseif $vfp_size_type == 'large'}{'Large'|@translate}{elseif $vfp_size_type == 'xlarge'}{'XLarge'|@translate}{elseif $vfp_size_type == 'xxlarge'}{'XXLarge'|@translate}{elseif $vfp_size_type == '3xlarge'}{'3XLarge'|@translate}{elseif $vfp_size_type == '4xlarge'}{'4XLarge'|@translate}{else}{$vfp_size_type}{/if}</option>
+            {/foreach}
           </select>
         </label>
       </li>

@@ -67,6 +67,43 @@ $config = array_merge(
     $config
 );
 
+// Tailles d'image proposees dans la configuration : uniquement a partir de
+// "medium" (les tailles plus petites n'ont pas d'interet pour une
+// visionneuse plein ecran), et seulement celles reellement activees sur
+// cette installation Piwigo (voir ImageStdParams::get_defined_type_map(),
+// qui est le mecanisme natif de Piwigo pour connaitre les tailles
+// effectivement disponibles — cf. reflexion menee avec l'utilisateur).
+// IMG_MEDIUM/LARGE/XLARGE/XXLARGE existent depuis toujours dans Piwigo.
+// IMG_3XLARGE/IMG_4XLARGE sont plus recentes (Piwigo 16) : sur une version
+// plus ancienne (ex. Piwigo 14), ces constantes n'existent pas du tout, et
+// les referencer directement dans le tableau ci-dessous provoquerait une
+// erreur fatale "Undefined constant" (PHP 8+ evalue tout le tableau
+// immediatement, meme si l'entree n'est jamais utilisee ensuite). D'ou la
+// verification defined() avant de les ajouter.
+$viewerforpiwigo_size_order = array(IMG_MEDIUM, IMG_LARGE, IMG_XLARGE, IMG_XXLARGE);
+if (defined('IMG_3XLARGE')) {
+    $viewerforpiwigo_size_order[] = IMG_3XLARGE;
+}
+if (defined('IMG_4XLARGE')) {
+    $viewerforpiwigo_size_order[] = IMG_4XLARGE;
+}
+$viewerforpiwigo_defined_sizes = class_exists('ImageStdParams') ? ImageStdParams::get_defined_type_map() : array();
+
+$available_sizes = array();
+foreach ($viewerforpiwigo_size_order as $viewerforpiwigo_size_type) {
+    if (array_key_exists($viewerforpiwigo_size_type, $viewerforpiwigo_defined_sizes)) {
+        $available_sizes[] = $viewerforpiwigo_size_type;
+    }
+}
+
+// Filet de securite : si la detection ne renvoie rien (version de Piwigo
+// sans ces constantes, erreur inattendue...), on retombe sur l'ancienne
+// liste fixe plutot que d'afficher un menu vide.
+if (empty($available_sizes)) {
+    $available_sizes = array('medium', 'large', 'xlarge', 'xxlarge');
+}
+
+
 $query = '
 SELECT id, name
   FROM ' . CATEGORIES_TABLE . '
@@ -81,6 +118,7 @@ while ($row = pwg_db_fetch_assoc($result)) {
 $template->assign(array(
     'conf_viewerforpiwigo' => $config,
     'categories' => $categories,
+    'available_sizes' => $available_sizes,
     'PWG_TOKEN' => get_pwg_token(),
     'VIEWERFORPIWIGO_ADMIN_ACTION' => get_root_url() . 'admin.php?page=plugin-' . $plugin_dir
 ));
