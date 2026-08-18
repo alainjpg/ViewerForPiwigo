@@ -82,6 +82,10 @@ document.addEventListener("DOMContentLoaded", function () {
     // avec un lien "Voir plus" vers la page photo Piwigo.
     const DESCRIPTION_TRUNCATE_THRESHOLD = 200;
 
+    // Delai maximal d'attente de la fin d'une video pendant le diaporama,
+    // au cas ou "ended" ne se declenche jamais (filet de securite).
+    const VIDEO_MAX_WAIT = 600000;
+
     function escapeHtml(str) {
         const div = document.createElement("div");
         div.textContent = str;
@@ -379,14 +383,110 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    let fancyboxVideoWaitTimer = null;
+    let fancyboxWaitingVideoEl = null;
+    let fancyboxVideoEndedHandler = null;
+
+    function fancyboxClearVideoWait() {
+        if (fancyboxVideoWaitTimer) {
+            clearTimeout(fancyboxVideoWaitTimer);
+            fancyboxVideoWaitTimer = null;
+        }
+        if (fancyboxWaitingVideoEl && fancyboxVideoEndedHandler) {
+            fancyboxWaitingVideoEl.removeEventListener("ended", fancyboxVideoEndedHandler);
+        }
+        fancyboxWaitingVideoEl = null;
+        fancyboxVideoEndedHandler = null;
+    }
+
+    // Sur une video HTML5, on met le diaporama natif Fancybox en pause et on
+    // attend la fin reelle avant d'avancer (avec filet de securite) ; sur une
+    // video embarquee (pas d'API commune fiable pour detecter sa fin), on
+    // reste en pause pour une reprise manuelle.
+    //
+    // Cause reelle des echecs precedents, tracee dans le code source de
+    // Fancybox 6.1.14 (dist/fancybox/fancybox.js + dist/carousel/carousel.js) :
+    // le plugin "Autoplay" vit dans le registre de plugins du CAROUSEL
+    // (carousel.js : getPlugins:function(){return H}), pas dans celui de
+    // l'instance Fancybox (dont le getPlugins() ne contient que "Hash").
+    // D'ou l'acces via getCarousel().getPlugins().Autoplay, jamais
+    // fancyboxRef.getPlugins() ni fancyboxRef.plugins directement.
+    // Autres points verifies dans le meme code source :
+    // - pause()/resume() est le bon couple : pause() ne desactive pas le
+    //   plugin (isEnabled() reste true), il suspend juste le minuteur.
+    //   stop()/start() desactiverait completement le plugin ;
+    // - tant qu'on ne desactive jamais le plugin, il reprogramme lui-meme
+    //   son prochain declenchement a chaque changement de slide (il ecoute
+    //   "change" en interne) : inutile d'intervenir pour les slides normales ;
+    // - il n'y a pas de methode next() sur l'instance Fancybox elle-meme,
+    //   uniquement sur l'instance Carousel (getCarousel().next()).
+    function fancyboxHandleSlideChange(fancyboxRef) {
+        fancyboxClearVideoWait();
+
+        const carousel = fancyboxRef.getCarousel ? fancyboxRef.getCarousel() : null;
+        const plugins = carousel && carousel.getPlugins ? carousel.getPlugins() : null;
+        const autoplay = plugins ? plugins.Autoplay : null;
+        if (!autoplay || !autoplay.isEnabled()) return;
+
+        const slide = fancyboxRef.getSlide ? fancyboxRef.getSlide() : null;
+        const el = slide && slide.el;
+        const video = el ? el.querySelector("video") : null;
+        const iframe = el ? el.querySelector("iframe") : null;
+
+        if (!video && !iframe) return;
+
+        autoplay.pause();
+
+        if (iframe) return;
+
+        const advance = () => {
+            fancyboxClearVideoWait();
+            if (carousel) carousel.next();
+
+            // Si la nouvelle slide est elle-meme une video, l'appel a
+            // carousel.next() ci-dessus a deja declenche une nouvelle
+            // execution de fancyboxHandleSlideChange (via "Carousel.change")
+            // qui l'a correctement remise en pause avec sa propre attente.
+            // Un resume() ici relancerait le minuteur fixe du plugin natif
+            // par-dessus cette pause (la video suivante serait alors coupee
+            // apres le delai normal au lieu d'attendre sa fin reelle).
+            const newSlide = fancyboxRef.getSlide ? fancyboxRef.getSlide() : null;
+            const newEl = newSlide && newSlide.el;
+            const newSlideIsVideo = newEl && (newEl.querySelector("video") || newEl.querySelector("iframe"));
+
+            if (!newSlideIsVideo) {
+                autoplay.resume();
+            }
+        };
+
+        fancyboxWaitingVideoEl = video;
+        fancyboxVideoEndedHandler = advance;
+        video.addEventListener("ended", fancyboxVideoEndedHandler);
+
+        const playPromise = video.play();
+        if (playPromise && typeof playPromise.catch === "function") {
+            playPromise.catch(() => {
+                fancyboxClearVideoWait();
+                // Lecture bloquee : reste en pause (comme pour une video embarquee).
+            });
+        }
+
+        fancyboxVideoWaitTimer = setTimeout(advance, VIDEO_MAX_WAIT);
+    }
+
     function launchFancybox(items, startIndex, forcePlay) {
         if (typeof Fancybox === "undefined") return;
+
+        fancyboxClearVideoWait();
 
         const timeoutVal = parseInt(rawConfig.slideshow_timeout || 3000, 10);
         Fancybox.show(items, {
             startIndex: startIndex,
             animated: true,
             dragToClose: true,
+            on: {
+                "ready Carousel.change": fancyboxHandleSlideChange
+            },
             Carousel: {
 			    
 				Autoplay: {
@@ -448,6 +548,9 @@ document.addEventListener("DOMContentLoaded", function () {
     let pswpInstance = null;
     let pswpAutoplayTimer = null;
     let pswpAutoplayBtnEl = null;
+    let pswpAutoplayActive = false;
+    let pswpWaitingVideoEl = null;
+    let pswpVideoEndedHandler = null;
 
     // Icones du bouton diaporama (play / pause). Fonction custom car
     // PhotoSwipe 5 ne fournit aucun autoplay natif.
@@ -460,20 +563,106 @@ document.addEventListener("DOMContentLoaded", function () {
         pswpAutoplayBtnEl.classList.toggle("fbv-playing", playing);
     }
 
-    function pswpStartAutoplay() {
-        if (!pswpInstance || pswpAutoplayTimer) return;
+    // content.element peut etre directement notre <iframe>/<video> (notre
+    // HTML n'a qu'une seule balise racine), ou un conteneur qui l'englobe
+    // selon le contexte : on gere les deux cas.
+    function pswpFindVideoEl(el) {
+        if (!el) return { video: null, iframe: null };
+        if (el.tagName === "VIDEO") return { video: el, iframe: null };
+        if (el.tagName === "IFRAME") return { video: null, iframe: el };
+        return {
+            video: el.querySelector ? el.querySelector("video") : null,
+            iframe: el.querySelector ? el.querySelector("iframe") : null
+        };
+    }
+
+    function pswpClearVideoWait() {
+        if (pswpWaitingVideoEl && pswpVideoEndedHandler) {
+            pswpWaitingVideoEl.removeEventListener("ended", pswpVideoEndedHandler);
+        }
+        pswpWaitingVideoEl = null;
+        pswpVideoEndedHandler = null;
+    }
+
+    function pswpAdvance() {
+        if (pswpAutoplayTimer) {
+            clearTimeout(pswpAutoplayTimer);
+            pswpAutoplayTimer = null;
+        }
+        pswpClearVideoWait();
+        if (pswpInstance) pswpInstance.next();
+    }
+
+    // Programme la prochaine avancee du diaporama en tenant compte du
+    // contenu de la slide courante : delai fixe pour une image, attente de
+    // la fin reelle pour une video HTML5 (avec filet de securite), pause
+    // (reprise manuelle) pour une video embarquee (YouTube/Vimeo/Dailymotion,
+    // pas d'API commune fiable pour detecter leur fin).
+    function pswpScheduleNext() {
+        if (pswpAutoplayTimer) {
+            clearTimeout(pswpAutoplayTimer);
+            pswpAutoplayTimer = null;
+        }
+        pswpClearVideoWait();
+
+        if (!pswpInstance) return;
+
+        const slide = pswpInstance.currSlide;
+        const data = slide && slide.data;
+        const el = slide && slide.content && slide.content.element;
+
+        if (data && data.isVideo && el) {
+            const { video, iframe } = pswpFindVideoEl(el);
+
+            if (video) {
+                pswpWaitingVideoEl = video;
+                pswpVideoEndedHandler = () => { pswpAdvance(); };
+                video.addEventListener("ended", pswpVideoEndedHandler);
+
+                const playPromise = video.play();
+                if (playPromise && typeof playPromise.catch === "function") {
+                    playPromise.catch(() => {
+                        // Lecture bloquee par le navigateur : inutile d'attendre
+                        // une fin qui ne surviendra pas. Comme pour une video
+                        // embarquee ci-dessous, on ne programme rien pour cette
+                        // slide mais le diaporama reste actif (reprise automatique
+                        // a la prochaine navigation, pas besoin de rappuyer sur
+                        // Lecture).
+                        pswpClearVideoWait();
+                    });
+                }
+
+                pswpAutoplayTimer = setTimeout(pswpAdvance, VIDEO_MAX_WAIT);
+                return;
+            }
+
+            if (iframe) {
+                // Comme sur Fancybox : le diaporama reste actif en arriere-plan
+                // (pas d'arret complet), simplement aucun minuteur n'est
+                // programme pour cette slide precise. Des que le visiteur
+                // navigue manuellement, la reprise est automatique.
+                return;
+            }
+        }
+
         const timeoutVal = parseInt(rawConfig.slideshow_timeout || 3000, 10);
-        pswpAutoplayTimer = setInterval(() => {
-            pswpInstance.next();
-        }, timeoutVal);
+        pswpAutoplayTimer = setTimeout(pswpAdvance, timeoutVal);
+    }
+
+    function pswpStartAutoplay() {
+        if (!pswpInstance || pswpAutoplayActive) return;
+        pswpAutoplayActive = true;
         pswpSetAutoplayIcon(true);
+        pswpScheduleNext();
     }
 
     function pswpStopAutoplay() {
+        pswpAutoplayActive = false;
         if (pswpAutoplayTimer) {
-            clearInterval(pswpAutoplayTimer);
+            clearTimeout(pswpAutoplayTimer);
             pswpAutoplayTimer = null;
         }
+        pswpClearVideoWait();
         pswpSetAutoplayIcon(false);
     }
 
@@ -485,9 +674,11 @@ document.addEventListener("DOMContentLoaded", function () {
             pswpInstance = null;
         }
         if (pswpAutoplayTimer) {
-            clearInterval(pswpAutoplayTimer);
+            clearTimeout(pswpAutoplayTimer);
             pswpAutoplayTimer = null;
         }
+        pswpClearVideoWait();
+        pswpAutoplayActive = false;
         pswpAutoplayBtnEl = null;
 
         if (!items.length) return;
@@ -665,10 +856,10 @@ document.addEventListener("DOMContentLoaded", function () {
                         pswpAutoplayBtnEl = el;
                         // Reflete l'etat reel si l'autoplay a deja ete demarre
                         // (ouverture forcee via le bouton Diaporama) avant que ce bouton n'existe.
-                        pswpSetAutoplayIcon(!!pswpAutoplayTimer);
+                        pswpSetAutoplayIcon(pswpAutoplayActive);
                     },
                     onClick: () => {
-                        if (pswpAutoplayTimer) {
+                        if (pswpAutoplayActive) {
                             pswpStopAutoplay();
                         } else {
                             pswpStartAutoplay();
@@ -678,25 +869,9 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
-        // Cycle de vie video : ne joue que lorsque la slide est reellement
-        // active, et coupe systematiquement le son en la quittant (que ce
-        // soit par swipe, fleche, ou fermeture de la visionneuse).
-        // content.element (fourni par les evenements ci-dessous) peut etre
-        // directement notre <iframe>/<video> (notre HTML n'a qu'une seule
-        // balise racine), ou un conteneur qui l'englobe selon le contexte :
-        // on gere les deux cas.
-        function pswpFindVideoEl(el) {
-            if (!el) return { video: null, iframe: null };
-            if (el.tagName === "VIDEO") return { video: el, iframe: null };
-            if (el.tagName === "IFRAME") return { video: null, iframe: el };
-            return {
-                video: el.querySelector ? el.querySelector("video") : null,
-                iframe: el.querySelector ? el.querySelector("iframe") : null
-            };
-        }
-
         pswpInstance.on("contentActivate", ({ content }) => {
             if (!content || !content.data || !content.data.isVideo || !content.element) return;
+
             const { video, iframe } = pswpFindVideoEl(content.element);
             if (video) {
                 const playPromise = video.play();
@@ -733,11 +908,17 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
+        pswpInstance.on("change", () => {
+            if (pswpAutoplayActive) pswpScheduleNext();
+        });
+
         pswpInstance.on("destroy", () => {
             if (pswpAutoplayTimer) {
-                clearInterval(pswpAutoplayTimer);
+                clearTimeout(pswpAutoplayTimer);
                 pswpAutoplayTimer = null;
             }
+            pswpClearVideoWait();
+            pswpAutoplayActive = false;
             pswpAutoplayBtnEl = null;
 
             // Filet de securite : coupe toute video/iframe encore active si la

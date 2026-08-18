@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: ViewerForPiwigo
-Version: 1.1.0
+Version: 1.1.1
 Description: Configurable Fancybox or PhotoSwipe viewer
 Author: Alain.jpg
 Has Settings: true
@@ -258,7 +258,7 @@ var VIEWERFORPIWIGO_DATA = ' . json_encode(array(
         'autoplay'  => l10n('Start / Stop slideshow'),
         'see_more'  => l10n('See more')
     )
-)) . ';
+), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) . ';
     </script>
     <script type="text/javascript" src="' . VIEWERFORPIWIGO_PATH . 'js/viewerforpiwigo.js"></script>
     ';

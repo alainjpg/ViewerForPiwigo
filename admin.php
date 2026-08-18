@@ -1,6 +1,8 @@
 <?php
 if (!defined('PHPWG_ROOT_PATH')) die('Hacking attempt!');
 
+check_status(ACCESS_ADMINISTRATOR);
+
 global $template, $page, $conf;
 
 $plugin_dir = basename(dirname(__FILE__));
@@ -32,7 +34,6 @@ if (isset($_POST['submit'])) {
         
         // --- NOUVELLES OPTIONS DE PORTE D'ENTRÉE ET CHARGEMENT ---
 		'open_from_thumbnails' => isset($_POST['open_from_thumbnails']),
-        'open_from_thumbnails' => isset($_POST['open_from_thumbnails']),
         'open_from_picture'    => isset($_POST['open_from_picture']),
 		'open_from_slideshow'  => isset($_POST['open_from_slideshow']),      
 		'open_from_osm_map'    => $viewerforpiwigo_osm_active

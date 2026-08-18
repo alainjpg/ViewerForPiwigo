@@ -65,7 +65,7 @@
         display: none !important;
     }
 }
-.f-button[title="Ouvrir la page de la photo"] svg {
+.f-button svg {
     vertical-align: middle;
 }
 

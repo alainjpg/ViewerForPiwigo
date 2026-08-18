@@ -190,7 +190,7 @@
         <label><strong>{'Albums concerned:'|@translate}</strong></label><br>
         <select name="categories[]" multiple="multiple" size="6" style="min-width:250px;">
           {foreach from=$categories item=cat}
-            <option value="{$cat.id}" {if in_array($cat.id, $conf_viewerforpiwigo.album_categories)}selected="selected"{/if}>{$cat.name}</option>
+            <option value="{$cat.id}" {if in_array($cat.id, $conf_viewerforpiwigo.album_categories)}selected="selected"{/if}>{$cat.name|@escape}</option>
           {/foreach}
         </select>
       </li>
