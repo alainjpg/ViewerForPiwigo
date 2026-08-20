@@ -156,8 +156,14 @@
     <ul>
       <li><label><input type="checkbox" name="enable_slideshow" value="1" {if $conf_viewerforpiwigo.enable_slideshow}checked="checked"{/if}> {'Show controls even when the viewer is not opened from the "Slideshow" button'|@translate}</label></li>
       <li>
-        <label><input type="checkbox" name="disable_slideshow_autoplay" value="1" {if !empty($conf_viewerforpiwigo.disable_slideshow_autoplay)}checked="checked"{/if}> {'Disable autoplay when opening the slideshow'|@translate}</label>
-        <p class="vfp-help">{'The Play button remains available so the user can start it manually.'|@translate}</p>
+        <label><strong>{'Autoplay on opening'|@translate}</strong>
+          <select name="autoplay_mode">
+            <option value="never" {if $conf_viewerforpiwigo.autoplay_mode == 'never'}selected="selected"{/if}>{'Never'|@translate}</option>
+            <option value="slideshow_button" {if $conf_viewerforpiwigo.autoplay_mode == 'slideshow_button'}selected="selected"{/if}>{'From the Piwigo "Slideshow" button only'|@translate}</option>
+            <option value="always" {if $conf_viewerforpiwigo.autoplay_mode == 'always'}selected="selected"{/if}>{'Every time the viewer is opened'|@translate}</option>
+          </select>
+        </label>
+        <p class="vfp-help">{'The Play button always remains available to start or stop it manually. Slideshow controls are always shown when set to "Every time the viewer is opened".'|@translate}</p>
       </li>
       <li><label><input type="checkbox" name="infinite" value="1" {if $conf_viewerforpiwigo.infinite}checked="checked"{/if}> {'Infinite loop navigation'|@translate}</label></li>
       <li>

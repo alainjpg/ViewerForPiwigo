@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const config = {
         enable_autoplay: rawConfig.enable_slideshow !== false,
-        disable_autoplay: rawConfig.disable_slideshow_autoplay === true,
+        autoplay_mode: ["never", "slideshow_button", "always"].indexOf(rawConfig.autoplay_mode) !== -1 ? rawConfig.autoplay_mode : "slideshow_button",
         enable_download: rawConfig.enable_download !== false,
         enable_zoom: rawConfig.enable_zoom !== false,
         enable_fullscreen: rawConfig.enable_fullscreen !== false,
@@ -210,8 +210,9 @@ document.addEventListener("DOMContentLoaded", function () {
         const toolbarRight = [];
         // Le bouton Diaporama demande explicitement un diaporama : les
         // commandes doivent toujours être visibles dans ce cas, quelle que
-        // soit l'option "Afficher les commandes du diaporama".
-        if (config.enable_autoplay || forcePlay) toolbarRight.push("autoplay");
+        // soit l'option "Afficher les commandes du diaporama". Idem si
+        // l'autoplay est configure pour demarrer a chaque ouverture.
+        if (config.enable_autoplay || forcePlay || config.autoplay_mode === "always") toolbarRight.push("autoplay");
         if (config.enable_zoom) {
             toolbarRight.push("zoomIn");
             toolbarRight.push("zoomOut");
@@ -479,18 +480,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
         fancyboxClearVideoWait();
 
+        const shouldAutoStart = config.autoplay_mode === "always" || (config.autoplay_mode === "slideshow_button" && !!forcePlay);
+
         const timeoutVal = parseInt(rawConfig.slideshow_timeout || 3000, 10);
         Fancybox.show(items, {
             startIndex: startIndex,
             animated: true,
             dragToClose: true,
             on: {
-                "ready Carousel.change": fancyboxHandleSlideChange
+                "ready Carousel.change Carousel.autoplay:start": fancyboxHandleSlideChange
             },
             Carousel: {
 			    
 				Autoplay: {
-					autoStart: !!forcePlay && !config.disable_autoplay,
+					autoStart: shouldAutoStart,
 					timeout: timeoutVal
 				},
 
@@ -845,7 +848,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             // Diaporama / autoplay (PhotoSwipe n'a pas d'autoplay natif : minuteur maison)
-            if ((config.enable_autoplay || forcePlay) && dataSource.length > 1) {
+            if ((config.enable_autoplay || forcePlay || config.autoplay_mode === "always") && dataSource.length > 1) {
                 pswpInstance.ui.registerElement({
                     name: "fbv-autoplay",
                     order: 7,
@@ -931,7 +934,8 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
 
-        if (forcePlay && !config.disable_autoplay && dataSource.length > 1) {
+        const shouldAutoStart = config.autoplay_mode === "always" || (config.autoplay_mode === "slideshow_button" && !!forcePlay);
+        if (shouldAutoStart && dataSource.length > 1) {
             pswpInstance.on("afterInit", () => {
                 pswpStartAutoplay();
             });

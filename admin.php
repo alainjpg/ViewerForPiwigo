@@ -21,7 +21,7 @@ $viewerforpiwigo_osm_active = defined('OSM_PATH');
 // explicite de decocher).
 $viewerforpiwigo_prev_raw = isset($conf['viewerforpiwigo']) ? $conf['viewerforpiwigo'] : null;
 $viewerforpiwigo_prev_config = $viewerforpiwigo_prev_raw
-    ? viewerforpiwigo_unserialize($viewerforpiwigo_prev_raw)
+    ? viewerforpiwigo_migrate_config(viewerforpiwigo_unserialize($viewerforpiwigo_prev_raw))
     : viewerforpiwigo_get_default_config();
 
 if (isset($_POST['submit'])) {
@@ -52,7 +52,7 @@ if (isset($_POST['submit'])) {
 		'show_thumb_button'    => isset($_POST['show_thumb_button']),
 		'thumbs_on_start'      => isset($_POST['thumbs_on_start']),
         'enable_slideshow'     => isset($_POST['enable_slideshow']),
-        'disable_slideshow_autoplay' => isset($_POST['disable_slideshow_autoplay']),
+        'autoplay_mode'        => in_array(($_POST['autoplay_mode'] ?? ''), array('never', 'slideshow_button', 'always'), true) ? $_POST['autoplay_mode'] : 'slideshow_button',
         'infinite'             => isset($_POST['infinite']),
         'slideshow_timeout'	   => isset($_POST['slideshow_timeout']) ? (int) $_POST['slideshow_timeout'] : 3000,
         'max_items_limit'      => isset($_POST['max_items_limit']) ? (int)$_POST['max_items_limit'] : 500,
@@ -81,6 +81,8 @@ $raw_conf = isset($conf['viewerforpiwigo']) ? $conf['viewerforpiwigo'] : null;
 $config = $raw_conf
     ? viewerforpiwigo_unserialize($raw_conf)
     : viewerforpiwigo_get_default_config();
+
+$config = viewerforpiwigo_migrate_config($config);
 
 $config = array_merge(
     viewerforpiwigo_get_default_config(),

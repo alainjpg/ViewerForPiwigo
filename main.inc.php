@@ -1,8 +1,9 @@
 <?php
 /*
 Plugin Name: ViewerForPiwigo
-Version: 1.1.1
+Version: 1.2.0
 Description: Configurable Fancybox or PhotoSwipe viewer
+Plugin URI: https://piwigo.org/ext/extension_view.php?eid=1107
 Author: Alain.jpg
 Has Settings: true
 
@@ -50,7 +51,7 @@ function viewerforpiwigo_get_default_config() {
 		'show_thumb_button'  	=> true,
 		'thumbs_on_start'      => true,
         'enable_slideshow'     => true,
-        'disable_slideshow_autoplay' => false,
+        'autoplay_mode'        => 'slideshow_button', // never | slideshow_button | always
         'infinite'             => true,
 		'slideshow_timeout' => 3000,
 
@@ -73,6 +74,22 @@ function viewerforpiwigo_unserialize($data) {
     return function_exists('safe_unserialize') ? safe_unserialize($data) : @unserialize($data);
 }
 
+// Migration de l'ancienne case 'disable_slideshow_autoplay' (booleen) vers le
+// nouveau choix a 3 valeurs 'autoplay_mode'. Ne touche jamais une config qui
+// a deja ete enregistree avec 'autoplay_mode' (choix explicite de
+// l'administrateur). Prend le tableau de config brut (avant fusion avec les
+// valeurs par defaut) pour pouvoir distinguer "jamais enregistre" de
+// "deja migre".
+function viewerforpiwigo_migrate_config($raw_config) {
+    if (!is_array($raw_config) || isset($raw_config['autoplay_mode'])) {
+        return $raw_config;
+    }
+    if (isset($raw_config['disable_slideshow_autoplay'])) {
+        $raw_config['autoplay_mode'] = $raw_config['disable_slideshow_autoplay'] ? 'never' : 'slideshow_button';
+    }
+    return $raw_config;
+}
+
 add_event_handler('loc_end_page_header', 'viewerforpiwigo_inject');
 
 function viewerforpiwigo_inject() {
@@ -81,6 +98,8 @@ function viewerforpiwigo_inject() {
 	$config = isset($conf['viewerforpiwigo'])
 		? viewerforpiwigo_unserialize($conf['viewerforpiwigo'])
 		: viewerforpiwigo_get_default_config();
+
+	$config = viewerforpiwigo_migrate_config($config);
 
 	$config = array_merge(
 		viewerforpiwigo_get_default_config(),
