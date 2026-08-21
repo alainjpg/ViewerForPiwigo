@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: ViewerForPiwigo
-Version: 1.3.0
+Version: 1.3.1
 Description: Configurable Fancybox or PhotoSwipe viewer
 Plugin URI: https://piwigo.org/ext/extension_view.php?eid=1107
 Author: Alain.jpg

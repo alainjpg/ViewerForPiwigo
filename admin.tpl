@@ -8,6 +8,7 @@
   .vfp-engine-summary { margin: 4px 0 10px 0; font-size: 0.95em; color: #555; }
   .vfp-local-info { margin: 6px 0 10px 0; }
   input.vfp-dimmed { opacity: 0.5; }
+  li.vfp-dimmed { opacity: 0.5; }
 </style>
 
 <form method="post" action="{$VIEWERFORPIWIGO_ADMIN_ACTION}" class="properties">
@@ -119,13 +120,13 @@
   <fieldset>
     <legend>{'Captions & Titles'|@translate}</legend>
     <ul>
-      <li><label><input type="checkbox" name="show_caption" value="1" {if $conf_viewerforpiwigo.show_caption}checked="checked"{/if}> {'Show the photo title'|@translate}</label></li>
+      <li><label><input type="checkbox" name="show_caption" value="1" id="vfp-show-caption" {if $conf_viewerforpiwigo.show_caption}checked="checked"{/if}> {'Show the photo title'|@translate}</label></li>
+      <li id="vfp-hide-auto-names-item" class="{if empty($conf_viewerforpiwigo.show_caption)}vfp-dimmed{/if}"><label><input type="checkbox" name="hide_auto_names" value="1" {if $conf_viewerforpiwigo.hide_auto_names}checked="checked"{/if}> {'Automatically hide generated names (IMG_..., PXL_..., etc.)'|@translate}</label></li>
       <li>
         <label><input type="checkbox" name="show_description" value="1" {if !empty($conf_viewerforpiwigo.show_description)}checked="checked"{/if}> {'Show the photo description'|@translate}</label>
         <p class="vfp-help">{'A long description is visually truncated with a link to the photo page.'|@translate}</p>
       </li>
       <li><label><input type="checkbox" name="show_author" value="1" {if !empty($conf_viewerforpiwigo.show_author)}checked="checked"{/if}> {'Show the photo author'|@translate}</label></li>
-      <li><label><input type="checkbox" name="hide_auto_names" value="1" {if $conf_viewerforpiwigo.hide_auto_names}checked="checked"{/if}> {'Automatically hide generated names (IMG_..., PXL_..., etc.)'|@translate}</label></li>
     </ul>
   </fieldset>
 
@@ -262,6 +263,18 @@
         }
     }
 
+    function updateHideAutoNamesState() {
+        var showCaption = byId('vfp-show-caption');
+        var item = byId('vfp-hide-auto-names-item');
+        if (showCaption && item) {
+            if (showCaption.checked) {
+                item.classList.remove('vfp-dimmed');
+            } else {
+                item.classList.add('vfp-dimmed');
+            }
+        }
+    }
+
     var engineSelect = byId('vfp-viewer-engine');
     if (engineSelect) {
         engineSelect.addEventListener('change', updateEngineDisplay);
@@ -279,9 +292,15 @@
         loadFullAlbumCheckbox.addEventListener('change', updateMaxItemsState);
     }
 
+    var showCaptionCheckbox = byId('vfp-show-caption');
+    if (showCaptionCheckbox) {
+        showCaptionCheckbox.addEventListener('change', updateHideAutoNamesState);
+    }
+
     // Etat initial (redondant avec le rendu serveur ci-dessus, conserve par
     // securite si jamais les deux etaient amenes a diverger).
     updateEngineDisplay();
     updateMaxItemsState();
+    updateHideAutoNamesState();
 })();
 </script>

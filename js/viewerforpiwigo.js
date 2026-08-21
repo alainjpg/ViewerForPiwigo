@@ -14,6 +14,8 @@ document.addEventListener("DOMContentLoaded", function () {
         auto_hide_controls: rawConfig.auto_hide_controls === true,
         show_description: rawConfig.show_description === true,
         show_author: rawConfig.show_author === true,
+        show_caption: rawConfig.show_caption !== false,
+        hide_auto_names: rawConfig.hide_auto_names !== false,
         page_link: rawConfig.page_link !== false && rawConfig.show_page_link !== false,
         open_new_tab: rawConfig.open_new_tab !== false,
 		open_from_thumbnails: rawConfig.open_from_thumbnails !== false,
@@ -124,8 +126,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
 		return VIEWERFORPIWIGO_DATA.items.map(item => {
 
-			let caption = item.name || item.comment || "";
-			if (isAutomaticFilename(caption)) caption = "";
+			let caption = config.show_caption ? (item.name || item.comment || "") : "";
+			if (config.show_caption && config.hide_auto_names && isAutomaticFilename(caption)) caption = "";
 
 			// Description : uniquement si l'option est activee, et seulement
 			// si elle apporte une information distincte du titre deja affiche
@@ -344,9 +346,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
 
-                let caption = pictureImage.alt || "";
+                let caption = config.show_caption ? (pictureImage.alt || "") : "";
 
-                if (isAutomaticFilename(caption)) {
+                if (config.show_caption && config.hide_auto_names && isAutomaticFilename(caption)) {
                     caption = "";
                 }
 
@@ -971,8 +973,8 @@ document.addEventListener("DOMContentLoaded", function () {
             const img = a.querySelector("img");
             if (!img) return null;
             const thumb = img.dataset.src || img.currentSrc || img.src;
-            let caption = (img.alt || "").trim();
-            if (isAutomaticFilename(caption)) caption = "";
+            let caption = config.show_caption ? (img.alt || "").trim() : "";
+            if (config.show_caption && config.hide_auto_names && isAutomaticFilename(caption)) caption = "";
 
             let matched = null;
             if (serverItems.length) {
@@ -991,13 +993,16 @@ document.addEventListener("DOMContentLoaded", function () {
                     // Pour une video, on conserve integralement les donnees
                     // serveur (src = URL video/iframe reelle) : ne surtout pas
                     // la remplacer par l'image "poster" affichee dans le DOM.
+                    // La legende serveur respecte deja show_caption/
+                    // hide_auto_names : elle prime toujours sur le texte brut
+                    // du DOM.
                     return Object.assign({}, matched, {
-                        caption: caption || matched.caption
+                        caption: matched.caption
                     });
                 }
                 return Object.assign({}, matched, {
                     src: getLargeImage(thumb) || matched.src,
-                    caption: caption || matched.caption
+                    caption: matched.caption
                 });
             }
 
