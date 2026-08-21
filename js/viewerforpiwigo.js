@@ -9,6 +9,9 @@ document.addEventListener("DOMContentLoaded", function () {
         enable_fullscreen: rawConfig.enable_fullscreen !== false,
         show_thumb_button: rawConfig.show_thumb_button !== false,
         thumbs_on_start: rawConfig.thumbs_on_start !== false,
+        show_mobile_arrows: rawConfig.show_mobile_arrows === true,
+        flat_arrows: rawConfig.flat_arrows === true,
+        auto_hide_controls: rawConfig.auto_hide_controls === true,
         show_description: rawConfig.show_description === true,
         show_author: rawConfig.show_author === true,
         page_link: rawConfig.page_link !== false && rawConfig.show_page_link !== false,
@@ -482,11 +485,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const shouldAutoStart = config.autoplay_mode === "always" || (config.autoplay_mode === "slideshow_button" && !!forcePlay);
 
+        const fancyboxMainClasses = [];
+        if (config.show_mobile_arrows) fancyboxMainClasses.push("vfp-mobile-arrows");
+        if (config.flat_arrows) fancyboxMainClasses.push("vfp-flat-arrows");
+
         const timeoutVal = parseInt(rawConfig.slideshow_timeout || 3000, 10);
         Fancybox.show(items, {
             startIndex: startIndex,
             animated: true,
             dragToClose: true,
+            mainClass: fancyboxMainClasses.join(" "),
+            idle: config.auto_hide_controls ? 3500 : false,
             on: {
                 "ready Carousel.change Carousel.autoplay:start": fancyboxHandleSlideChange
             },
@@ -745,6 +754,7 @@ document.addEventListener("DOMContentLoaded", function () {
             // "Bouton Zoom" (pas besoin d'un bouton personnalisé : PhotoSwipe
             // fournit déjà ce bouton nativement).
             zoom: config.enable_zoom,
+            mainClass: config.show_mobile_arrows ? "vfp-mobile-arrows" : "",
             bgOpacity: 0.9,
             showHideAnimationType: "zoom",
             paddingFn: () => ({ top: 30, bottom: 30, left: 0, right: 0 })

@@ -137,6 +137,10 @@
       <li><label><input type="checkbox" name="enable_download" value="1" {if $conf_viewerforpiwigo.enable_download}checked="checked"{/if}> {'Image download button'|@translate}</label></li>
       <li><label><input type="checkbox" name="enable_zoom" value="1" {if $conf_viewerforpiwigo.enable_zoom}checked="checked"{/if}> {'Zoom button'|@translate}</label></li>
       <li><label><input type="checkbox" name="enable_fullscreen" value="1" {if $conf_viewerforpiwigo.enable_fullscreen}checked="checked"{/if}> {'Fullscreen button'|@translate}</label></li>
+      <li>
+        <label><input type="checkbox" name="show_mobile_arrows" value="1" {if !empty($conf_viewerforpiwigo.show_mobile_arrows)}checked="checked"{/if}> {'Show navigation arrows on mobile'|@translate}</label>
+        <p class="vfp-help">{'Horizontal swipe is always available to navigate between photos.'|@translate}</p>
+      </li>
     </ul>
   </fieldset>
 
@@ -148,6 +152,8 @@
         <label><input type="checkbox" name="thumbs_on_start" value="1" {if !empty($conf_viewerforpiwigo.thumbs_on_start)}checked="checked"{/if}> {'Show thumbnails when opening'|@translate}</label>
         <p class="vfp-help">{'If disabled, Fancybox opens without the thumbnail strip; it can still be shown using the thumbnails button above.'|@translate}</p>
       </li>
+      <li><label><input type="checkbox" name="flat_arrows" value="1" {if !empty($conf_viewerforpiwigo.flat_arrows)}checked="checked"{/if}> {'Flat arrows without circular background'|@translate}</label></li>
+      <li><label><input type="checkbox" name="auto_hide_controls" value="1" {if !empty($conf_viewerforpiwigo.auto_hide_controls)}checked="checked"{/if}> {'Automatically hide controls after a few seconds'|@translate}</label></li>
     </ul>
   </fieldset>
 

@@ -83,3 +83,26 @@
 .pswp button[class*="fbv-"].fbv-playing {
     color: #4caf50;
 }
+
+/* Fleches de navigation sur mobile : masquees par defaut sur Fancybox (comme
+   PhotoSwipe le fait deja nativement via .pswp--touch), sauf si l'option
+   "Afficher les fleches de navigation sur mobile" est activee (classe
+   vfp-mobile-arrows ajoutee via l'option mainClass des deux moteurs). */
+@media (max-width: 600px) {
+    .fancybox__container:not(.vfp-mobile-arrows) .f-button.is-arrow {
+        display: none;
+    }
+}
+.pswp.vfp-mobile-arrows.pswp--touch .pswp__button--arrow {
+    visibility: visible;
+}
+
+/* Fancybox : fleches discretes, sans fond circulaire (variables CSS natives
+   du theme Fancybox : --f-arrow-bg vaut par defaut rgba(54,54,54,.65) avec
+   --f-arrow-border-radius: 50%). */
+.fancybox__container.vfp-flat-arrows {
+    --f-arrow-bg: transparent;
+    --f-arrow-hover-bg: transparent;
+    --f-arrow-active-bg: transparent;
+    --f-arrow-border-radius: 0;
+}
