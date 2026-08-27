@@ -20,6 +20,7 @@ document.addEventListener("DOMContentLoaded", function () {
         open_new_tab: rawConfig.open_new_tab !== false,
 		open_from_thumbnails: rawConfig.open_from_thumbnails !== false,
 		open_from_picture: rawConfig.open_from_picture !== false,
+		open_hint_mode: ["never", "corner_permanent", "corner_fade", "toolbar"].indexOf(rawConfig.open_hint_mode) !== -1 ? rawConfig.open_hint_mode : "never",
 		open_from_slideshow: rawConfig.open_from_slideshow === true,
 		open_from_osm_map: rawConfig.open_from_osm_map !== false,
 		load_full_album: rawConfig.load_full_album !== false,
@@ -47,11 +48,11 @@ document.addEventListener("DOMContentLoaded", function () {
 		return src.replace(/-[^-\/]+(\.[^.]+)$/i, "$1");
 	}
 
-	// Extrait l'ID Piwigo directement depuis le lien d'une miniature (formats
-	// courants : ?image_id=123, ?/123, ou URL "jolie" /123-titre/). Fonctionne
-	// aussi bien pour les photos que pour les videos, contrairement a une
-	// correspondance par nom de fichier (la vignette d'une video est une image
-	// "poster" dont le nom ne correspond jamais au fichier video reel).
+	// Extrait l'ID Piwigo depuis le lien d'une miniature (formats courants :
+	// ?image_id=123, ?/123, ou URL « jolie » /123-titre/). Fonctionne aussi
+	// pour les vidéos, contrairement à une correspondance par nom de fichier
+	// (la vignette d'une vidéo est une image « poster » sans rapport avec le
+	// nom du fichier vidéo réel).
 	function extractImageIdFromHref(href) {
 		if (!href) return null;
 		let m = href.match(/[?&]image_id=(\d+)/);
@@ -76,19 +77,19 @@ document.addEventListener("DOMContentLoaded", function () {
         if (/^Capture d[’']écran.*$/i.test(text)) return true;
         if (/^\d{8,}[ _-][a-f0-9]{6,}$/i.test(text)) return true;
         if (/^[\d _-]+$/.test(text)) return true;
-        // Format "YYYYMMDD HHMMSS" avec suffixe optionnel "~N" (ex: doublons
-        // exportes par certaines galeries/synchronisations).
+        // Format « YYYYMMDD HHMMSS » avec suffixe optionnel « ~N » (doublons
+        // exportés par certaines galeries/synchronisations).
         if (/^\d{8} \d{6}(~\d+)?$/.test(text)) return true;
 
         return false;
     }
-    // Longueur approximative au dela de laquelle une description est
-    // consideree "longue" et donc visuellement tronquee (voir CSS ligne-clamp)
-    // avec un lien "Voir plus" vers la page photo Piwigo.
+    // Longueur au-delà de laquelle une description est jugée « longue » et
+    // tronquée visuellement (CSS line-clamp), avec un lien « Voir plus »
+    // vers la page photo Piwigo.
     const DESCRIPTION_TRUNCATE_THRESHOLD = 200;
 
-    // Delai maximal d'attente de la fin d'une video pendant le diaporama,
-    // au cas ou "ended" ne se declenche jamais (filet de securite).
+    // Délai maximal d'attente de la fin d'une vidéo pendant le diaporama,
+    // au cas où « ended » ne se déclenche jamais (filet de sécurité).
     const VIDEO_MAX_WAIT = 600000;
 
     function escapeHtml(str) {
@@ -97,9 +98,9 @@ document.addEventListener("DOMContentLoaded", function () {
         return div.innerHTML;
     }
 
-    // Construit le HTML titre/auteur/description commun aux deux moteurs, en
-    // reutilisant les classes .vfp-title/.vfp-description deja
-    // presentes dans le CSS du plugin.
+    // Construit le HTML titre/auteur/description commun aux deux moteurs,
+    // en réutilisant les classes .vfp-title/.vfp-description déjà
+    // présentes dans le CSS du plugin.
     function buildCaptionHtml(title, author, description, pageUrl) {
         let html = "";
 
@@ -129,10 +130,9 @@ document.addEventListener("DOMContentLoaded", function () {
 			let caption = config.show_caption ? (item.name || item.comment || "") : "";
 			if (config.show_caption && config.hide_auto_names && isAutomaticFilename(caption)) caption = "";
 
-			// Description : uniquement si l'option est activee, et seulement
-			// si elle apporte une information distincte du titre deja affiche
-			// (evite d'afficher deux fois le meme texte quand le commentaire
-			// sert deja de repli pour le titre ci-dessus).
+			// Description affichée seulement si l'option est active et
+			// distincte du titre déjà affiché (évite un doublon quand le
+			// commentaire sert déjà de repli pour le titre).
 			let description = "";
 			if (config.show_description && item.comment && item.comment.trim() && item.comment !== caption) {
 				description = item.comment.trim();
@@ -214,9 +214,9 @@ document.addEventListener("DOMContentLoaded", function () {
     function buildToolbarRight(forcePlay) {
         const toolbarRight = [];
         // Le bouton Diaporama demande explicitement un diaporama : les
-        // commandes doivent toujours être visibles dans ce cas, quelle que
-        // soit l'option "Afficher les commandes du diaporama". Idem si
-        // l'autoplay est configure pour demarrer a chaque ouverture.
+        // commandes restent toujours visibles dans ce cas, quelle que soit
+        // l'option « Afficher les commandes… ». Idem si l'autoplay est
+        // configuré pour démarrer à chaque ouverture.
         if (config.enable_autoplay || forcePlay || config.autoplay_mode === "always") toolbarRight.push("autoplay");
         if (config.enable_zoom) {
             toolbarRight.push("zoomIn");
@@ -254,13 +254,12 @@ document.addEventListener("DOMContentLoaded", function () {
                     const clickedSrc = clickedImg ? (clickedImg.dataset.src || clickedImg.src) : "";
                     let startIndex = index;
 
-                    // Correspondance primaire : par ID Piwigo (toujours unique,
-                    // extrait du href de la miniature). Necessaire notamment
-                    // quand plusieurs photos de l'album partagent le meme
-                    // prefixe de nom de fichier (ex. import par lot, meme
-                    // horodatage de generation de derivee a la seconde pres) :
-                    // dans ce cas, une correspondance par nom de fichier seule
-                    // retombe systematiquement sur la premiere photo trouvee.
+                    // Correspondance primaire par ID Piwigo (extrait du href),
+                    // plus fiable qu'un nom de fichier : nécessaire quand
+                    // plusieurs photos partagent le même préfixe (import par
+                    // lot, même horodatage de dérivée à la seconde près),
+                    // sinon la correspondance retombe toujours sur la
+                    // première photo.
                     const linkId = extractImageIdFromHref(a.href);
                     if (linkId !== null) {
                         const idIdx = items.findIndex(item => item.id === linkId);
@@ -306,11 +305,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
 				const startIndex = getCurrentImageIndex(items);
 
-				// Le clic sur le bouton Diaporama signifie que l'utilisateur
-				// demande explicitement un diaporama : l'autoplay doit démarrer
-				// et les commandes du diaporama doivent être visibles, même si
-				// l'option "Afficher les commandes du diaporama" est désactivée
-				// (celle-ci ne concerne que les ouvertures normales).
+				// Le clic sur le bouton Diaporama demande explicitement un
+				// diaporama : l'autoplay démarre et les commandes restent
+				// visibles, même si l'option « Afficher les commandes… » est
+				// désactivée (qui ne concerne que les ouvertures normales).
 				launchViewer(items, startIndex, true);
 			});
 		});
@@ -320,16 +318,16 @@ document.addEventListener("DOMContentLoaded", function () {
 	if (isViewerAllowed() && config.open_from_picture && pictureImage) {
         pictureImage.style.cursor = "zoom-in";
 
-        pictureImage.addEventListener("click", function (e) {
+        function openMainImage(e) {
             e.preventDefault();
 
             if (!config.load_full_album) {
-                // Meme quand on ne charge pas tout l'album, les dimensions reelles
-                // de la photo courante sont deja disponibles cote serveur
-                // (VIEWERFORPIWIGO_DATA.items contient toujours au moins la photo
-                // affichee). On les utilise pour eviter le ratio 4/3 par defaut de
-                // PhotoSwipe. Si elles ne sont pas disponibles, on retombe sur
-                // l'ancien comportement (deduit du DOM) sans rien casser.
+                // Même sans charger tout l'album, les dimensions réelles de
+                // la photo courante sont déjà disponibles côté serveur
+                // (VIEWERFORPIWIGO_DATA.items contient au moins la photo
+                // affichée) : on les utilise pour éviter le ratio 4/3 par
+                // défaut de PhotoSwipe, avec repli sur le comportement
+                // précédent si absentes.
                 let serverItem = null;
                 if (
                     typeof VIEWERFORPIWIGO_DATA !== "undefined" &&
@@ -375,11 +373,87 @@ document.addEventListener("DOMContentLoaded", function () {
 			const startIndex = getCurrentImageIndex(items);
 
 			launchViewer(items, startIndex);
-        });
+        }
+
+        pictureImage.addEventListener("click", openMainImage);
+
+        if (config.open_hint_mode !== "never") {
+            const hintSvg = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 9 4 4 9 4"></polyline><polyline points="20 9 20 4 15 4"></polyline><polyline points="4 15 4 20 9 20"></polyline><polyline points="20 15 20 20 15 20"></polyline></svg>';
+
+            if (config.open_hint_mode === "toolbar") {
+                // #imageToolBar est une convention du coeur Piwigo
+                // (themes/default/template/picture.tpl), presente dans de
+                // nombreux themes ; #navigationButtons est utilise par
+                // Bootstrap Darkroom. Un theme tres personnalise pourrait
+                // n'avoir ni l'un ni l'autre : on verifie plutot que de
+                // supposer, et on ne fait rien silencieusement sinon.
+                const toolbar = document.getElementById("imageToolBar") || document.getElementById("navigationButtons");
+                if (toolbar) {
+                    const hint = document.createElement("button");
+                    hint.type = "button";
+                    hint.className = "vfp-open-hint vfp-open-hint--toolbar";
+                    hint.innerHTML = hintSvg;
+                    hint.addEventListener("click", openMainImage);
+
+                    // Un <button> comme enfant direct d'un <ul>/<ol> est HTML
+                    // invalide et les regles CSS du theme ciblant ses <li>
+                    // (repartition flex, espacement...) ne s'appliqueraient
+                    // jamais a un element etranger : on l'enveloppe dans un
+                    // <li> pour rester structurellement conforme.
+                    if (toolbar.tagName === "UL" || toolbar.tagName === "OL") {
+                        const li = document.createElement("li");
+                        li.appendChild(hint);
+                        toolbar.appendChild(li);
+                    } else {
+                        toolbar.appendChild(hint);
+                    }
+                }
+            } else {
+                const hint = document.createElement("button");
+                hint.type = "button";
+                hint.className = "vfp-open-hint vfp-open-hint--corner";
+                if (config.open_hint_mode === "corner_fade") {
+                    hint.className += " vfp-open-hint--fade";
+                }
+                hint.innerHTML = hintSvg;
+                document.body.appendChild(hint);
+
+                // Position calculée en JS plutôt qu'en CSS relatif à un
+                // conteneur : un wrapper autour de #theMainImage a déjà
+                // cassé la mise en page sur certains thèmes (dimensionnement
+                // propre au thème non hérité par le conteneur ajouté). Ici,
+                // le DOM autour de l'image reste intact.
+                function positionHint() {
+                    const rect = pictureImage.getBoundingClientRect();
+                    hint.style.top = (rect.top + window.scrollY + 8) + "px";
+                    hint.style.left = (rect.right + window.scrollX - 40) + "px";
+                }
+                positionHint();
+                window.addEventListener("resize", positionHint);
+                window.addEventListener("orientationchange", positionHint);
+                window.addEventListener("load", positionHint);
+
+                if (config.open_hint_mode === "corner_fade") {
+                    const showHint = () => hint.classList.add("vfp-open-hint--visible");
+                    const hideHint = () => hint.classList.remove("vfp-open-hint--visible");
+                    pictureImage.addEventListener("mouseenter", showHint);
+                    pictureImage.addEventListener("mouseleave", hideHint);
+                    hint.addEventListener("mouseenter", showHint);
+                    hint.addEventListener("mouseleave", hideHint);
+
+                    // Apparition breve au chargement (ordinateur et tactile),
+                    // puis le survol reprend le relais sur ordinateur.
+                    showHint();
+                    setTimeout(hideHint, 3500);
+                }
+
+                hint.addEventListener("click", openMainImage);
+            }
+        }
     }
 
     // +-----------------------------------------------------------------------+
-    // | Dispatcher : selectionne le moteur configure dans l'admin             |
+    // | Dispatcher : sélectionne le moteur configuré dans l'admin             |
     // +-----------------------------------------------------------------------+
     function launchViewer(items, startIndex, forcePlay) {
         if (config.viewer_engine === "photoswipe") {
@@ -405,27 +479,20 @@ document.addEventListener("DOMContentLoaded", function () {
         fancyboxVideoEndedHandler = null;
     }
 
-    // Sur une video HTML5, on met le diaporama natif Fancybox en pause et on
-    // attend la fin reelle avant d'avancer (avec filet de securite) ; sur une
-    // video embarquee (pas d'API commune fiable pour detecter sa fin), on
-    // reste en pause pour une reprise manuelle.
+    // Vidéo HTML5 : diaporama Fancybox mis en pause, attente de la fin
+    // réelle avant d'avancer (avec filet de sécurité). Vidéo embarquée (pas
+    // d'API commune fiable pour détecter sa fin) : reste en pause, reprise
+    // manuelle.
     //
-    // Cause reelle des echecs precedents, tracee dans le code source de
-    // Fancybox 6.1.14 (dist/fancybox/fancybox.js + dist/carousel/carousel.js) :
-    // le plugin "Autoplay" vit dans le registre de plugins du CAROUSEL
-    // (carousel.js : getPlugins:function(){return H}), pas dans celui de
-    // l'instance Fancybox (dont le getPlugins() ne contient que "Hash").
-    // D'ou l'acces via getCarousel().getPlugins().Autoplay, jamais
-    // fancyboxRef.getPlugins() ni fancyboxRef.plugins directement.
-    // Autres points verifies dans le meme code source :
-    // - pause()/resume() est le bon couple : pause() ne desactive pas le
-    //   plugin (isEnabled() reste true), il suspend juste le minuteur.
-    //   stop()/start() desactiverait completement le plugin ;
-    // - tant qu'on ne desactive jamais le plugin, il reprogramme lui-meme
-    //   son prochain declenchement a chaque changement de slide (il ecoute
-    //   "change" en interne) : inutile d'intervenir pour les slides normales ;
-    // - il n'y a pas de methode next() sur l'instance Fancybox elle-meme,
-    //   uniquement sur l'instance Carousel (getCarousel().next()).
+    // Le plugin Autoplay vit dans le registre de plugins du Carousel, pas de
+    // Fancybox (son getPlugins() ne contient que Hash) : d'où
+    // getCarousel().getPlugins().Autoplay, jamais fancyboxRef.getPlugins()
+    // ni fancyboxRef.plugins. pause()/resume() est le bon couple (isEnabled()
+    // reste true, seul le minuteur est suspendu) ; stop()/start()
+    // désactiverait le plugin. Le plugin se reprogramme lui-même via son
+    // écoute de « change » interne : inutile d'intervenir sur les slides
+    // normales. Pas de next() sur l'instance Fancybox, uniquement sur
+    // Carousel.
     function fancyboxHandleSlideChange(fancyboxRef) {
         fancyboxClearVideoWait();
 
@@ -449,13 +516,11 @@ document.addEventListener("DOMContentLoaded", function () {
             fancyboxClearVideoWait();
             if (carousel) carousel.next();
 
-            // Si la nouvelle slide est elle-meme une video, l'appel a
-            // carousel.next() ci-dessus a deja declenche une nouvelle
-            // execution de fancyboxHandleSlideChange (via "Carousel.change")
-            // qui l'a correctement remise en pause avec sa propre attente.
-            // Un resume() ici relancerait le minuteur fixe du plugin natif
-            // par-dessus cette pause (la video suivante serait alors coupee
-            // apres le delai normal au lieu d'attendre sa fin reelle).
+            // Si la nouvelle slide est elle-même une vidéo, carousel.next()
+            // ci-dessus a déjà redéclenché fancyboxHandleSlideChange (via
+            // « Carousel.change »), qui l'a remise en pause avec sa propre
+            // attente. Un resume() ici relancerait le minuteur fixe
+            // par-dessus, coupant la vidéo suivante avant sa fin réelle.
             const newSlide = fancyboxRef.getSlide ? fancyboxRef.getSlide() : null;
             const newEl = newSlide && newSlide.el;
             const newSlideIsVideo = newEl && (newEl.querySelector("video") || newEl.querySelector("iframe"));
@@ -473,7 +538,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (playPromise && typeof playPromise.catch === "function") {
             playPromise.catch(() => {
                 fancyboxClearVideoWait();
-                // Lecture bloquee : reste en pause (comme pour une video embarquee).
+                // Lecture bloquée : reste en pause (comme pour une vidéo embarquée).
             });
         }
 
@@ -508,10 +573,10 @@ document.addEventListener("DOMContentLoaded", function () {
 					timeout: timeoutVal
 				},
 
-				// "Afficher le bouton des miniatures" (show_thumb_button) est gere
-				// separement via le bouton de la Toolbar ci-dessous ; showOnStart
-				// ne controle que l'etat initial du carrousel de miniatures, sans
-				// desactiver le plugin ni son bouton (API native Fancybox 6).
+				// « Afficher le bouton des miniatures » est géré séparément
+				// via le bouton Toolbar ci-dessous ; showOnStart ne contrôle
+				// que l'état initial du carrousel, sans désactiver le plugin
+				// (API native Fancybox 6).
 				Thumbs: {
 					showOnStart: config.thumbs_on_start
 				},
@@ -556,7 +621,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // +-----------------------------------------------------------------------+
     // | Moteur PhotoSwipe                                                     |
     // |                                                                       |
-    // | Les videos (YouTube/Vimeo/Dailymotion/HTML5) sont affichees via des   |
+    // | Les vidéos (YouTube/Vimeo/Dailymotion/HTML5) sont affichées via des   |
     // | slides "html" natives de PhotoSwipe 5 (voir dataSource plus bas).     |
     // +-----------------------------------------------------------------------+
     let pswpInstance = null;
@@ -566,8 +631,8 @@ document.addEventListener("DOMContentLoaded", function () {
     let pswpWaitingVideoEl = null;
     let pswpVideoEndedHandler = null;
 
-    // Icones du bouton diaporama (play / pause). Fonction custom car
-    // PhotoSwipe 5 ne fournit aucun autoplay natif.
+    // Icônes du bouton diaporama (play / pause) : fonction maison, PhotoSwipe
+    // 5 n'a pas d'autoplay natif.
     const PSWP_ICON_PLAY  = '<svg aria-hidden="true" class="pswp__icn" viewBox="0 0 32 32" width="32" height="32"><path d="M10 7v18l15-9z" fill="var(--pswp-icon-color, #fff)"/></svg>';
     const PSWP_ICON_PAUSE = '<svg aria-hidden="true" class="pswp__icn" viewBox="0 0 32 32" width="32" height="32"><path d="M9 7h5v18H9zM18 7h5v18h-5z" fill="var(--pswp-icon-color, #fff)"/></svg>';
 
@@ -577,9 +642,9 @@ document.addEventListener("DOMContentLoaded", function () {
         pswpAutoplayBtnEl.classList.toggle("fbv-playing", playing);
     }
 
-    // content.element peut etre directement notre <iframe>/<video> (notre
-    // HTML n'a qu'une seule balise racine), ou un conteneur qui l'englobe
-    // selon le contexte : on gere les deux cas.
+    // content.element peut être directement notre <iframe>/<video> (une
+    // seule balise racine) ou un conteneur l'englobant : on gère les deux
+    // cas.
     function pswpFindVideoEl(el) {
         if (!el) return { video: null, iframe: null };
         if (el.tagName === "VIDEO") return { video: el, iframe: null };
@@ -607,11 +672,10 @@ document.addEventListener("DOMContentLoaded", function () {
         if (pswpInstance) pswpInstance.next();
     }
 
-    // Programme la prochaine avancee du diaporama en tenant compte du
-    // contenu de la slide courante : delai fixe pour une image, attente de
-    // la fin reelle pour une video HTML5 (avec filet de securite), pause
-    // (reprise manuelle) pour une video embarquee (YouTube/Vimeo/Dailymotion,
-    // pas d'API commune fiable pour detecter leur fin).
+    // Programme la prochaine avancée du diaporama selon la slide courante :
+    // délai fixe pour une image, attente de la fin réelle pour une vidéo
+    // HTML5 (avec filet de sécurité), pause manuelle pour une vidéo
+    // embarquée (pas d'API commune fiable pour détecter sa fin).
     function pswpScheduleNext() {
         if (pswpAutoplayTimer) {
             clearTimeout(pswpAutoplayTimer);
@@ -636,12 +700,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 const playPromise = video.play();
                 if (playPromise && typeof playPromise.catch === "function") {
                     playPromise.catch(() => {
-                        // Lecture bloquee par le navigateur : inutile d'attendre
-                        // une fin qui ne surviendra pas. Comme pour une video
-                        // embarquee ci-dessous, on ne programme rien pour cette
-                        // slide mais le diaporama reste actif (reprise automatique
-                        // a la prochaine navigation, pas besoin de rappuyer sur
-                        // Lecture).
+                        // Lecture bloquée par le navigateur : inutile d'attendre
+                        // une fin qui ne surviendra pas. Comme pour une vidéo
+                        // embarquée ci-dessous, rien n'est programmé pour cette
+                        // slide mais le diaporama reste actif (reprise
+                        // automatique à la navigation suivante, sans rappuyer
+                        // sur Lecture).
                         pswpClearVideoWait();
                     });
                 }
@@ -651,10 +715,10 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             if (iframe) {
-                // Comme sur Fancybox : le diaporama reste actif en arriere-plan
-                // (pas d'arret complet), simplement aucun minuteur n'est
-                // programme pour cette slide precise. Des que le visiteur
-                // navigue manuellement, la reprise est automatique.
+                // Comme sur Fancybox : le diaporama reste actif en
+                // arrière-plan (pas d'arrêt complet), aucun minuteur n'est
+                // programmé pour cette slide. La reprise est automatique dès
+                // que le visiteur navigue manuellement.
                 return;
             }
         }
@@ -699,23 +763,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
         let pswpStartIndex = startIndex >= 0 && startIndex < items.length ? startIndex : 0;
 
-        // PhotoSwipe 5 supporte nativement les slides "html" (voir data-sources
-        // de la doc officielle : { html: '...' } au lieu de { src: '...' }).
-        // On s'en sert pour la video HTML5, YouTube, Vimeo et Dailymotion,
-        // au lieu de rediriger vers la page Piwigo comme avant.
+        // PhotoSwipe 5 supporte nativement les slides « html » ({ html: '...' }
+        // au lieu de { src: '...' }) : utilisé pour la vidéo HTML5, YouTube,
+        // Vimeo et Dailymotion, au lieu de rediriger vers la page Piwigo.
         const dataSource = items.map((item, idx) => {
             if (item.isVideo) {
                 const isIframeVideo = item.type !== "html5video";
-                // PhotoSwipe précharge la/les slide(s) voisine(s) pour un swipe
-                // fluide : si l'URL de la slide contient déjà "autoplay=1"
-                // (cas YouTube), la vidéo se met à jouer en arrière-plan avant
-                // même que l'utilisateur ne l'affiche. On retire ce paramètre
-                // des slides non actives et on ne le réinjecte que lorsque la
-                // slide devient réellement active (voir contentActivate ci-dessous).
-                // Exception : la slide sur laquelle on ouvre directement la
-                // visionneuse recoit l'autoplay tout de suite (meme "geste
-                // utilisateur" que le clic d'ouverture), certains navigateurs
-                // n'autorisant la lecture automatique avec son que dans ce cas.
+                // PhotoSwipe précharge la slide voisine pour un swipe fluide :
+                // si son URL contient déjà « autoplay=1 » (YouTube), le son
+                // démarre en arrière-plan avant affichage. On retire ce
+                // paramètre des slides non actives, réinjecté seulement à
+                // l'activation réelle (voir contentActivate). Exception : la
+                // slide d'ouverture directe reçoit l'autoplay immédiatement
+                // (même geste utilisateur que le clic), certains navigateurs
+                // bloquant l'autoplay avec son hors de ce cas.
                 const isInitialSlide = idx === pswpStartIndex;
                 const silentSrc = isIframeVideo ? item.src.replace(/[?&]autoplay=1/, "") : item.src;
                 const initialSrc = isIframeVideo && isInitialSlide ? item.src : silentSrc;
@@ -764,7 +825,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         pswpInstance.on("uiRegister", function () {
 
-            // Legende (titre)
+            // Légende (titre)
             pswpInstance.ui.registerElement({
                 name: "fbv-caption",
                 order: 9,
@@ -809,7 +870,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
             }
 
-            // Bouton telechargement de l'original
+            // Bouton téléchargement de l'original
             if (config.enable_download) {
                 pswpInstance.ui.registerElement({
                     name: "fbv-download",
@@ -837,7 +898,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
             }
 
-            // Plein ecran (API navigateur native, PhotoSwipe n'a pas de bouton integre)
+            // Plein écran (API navigateur native, PhotoSwipe n'a pas de bouton intégré)
             if (config.enable_fullscreen && document.documentElement.requestFullscreen) {
                 pswpInstance.ui.registerElement({
                     name: "fbv-fullscreen",
@@ -869,8 +930,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     html: PSWP_ICON_PLAY,
                     onInit: (el) => {
                         pswpAutoplayBtnEl = el;
-                        // Reflete l'etat reel si l'autoplay a deja ete demarre
-                        // (ouverture forcee via le bouton Diaporama) avant que ce bouton n'existe.
+                        // Reflète l'état réel si l'autoplay a déjà démarré
+                        // (ouverture forcée via le bouton Diaporama) avant que ce bouton n'existe.
                         pswpSetAutoplayIcon(pswpAutoplayActive);
                     },
                     onClick: () => {
@@ -936,8 +997,8 @@ document.addEventListener("DOMContentLoaded", function () {
             pswpAutoplayActive = false;
             pswpAutoplayBtnEl = null;
 
-            // Filet de securite : coupe toute video/iframe encore active si la
-            // visionneuse est fermee sans passer par contentDeactivate.
+            // Filet de sécurité : coupe toute vidéo/iframe encore active si la
+            // visionneuse est fermée sans passer par contentDeactivate.
             document.querySelectorAll(".pswp video").forEach(v => {
                 try { v.pause(); } catch (e) { /* noop */ }
             });
@@ -957,12 +1018,11 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function launchLocalViewer(startIndex) {
-        // Comme pour picture.php : si les donnees serveur sont disponibles pour
-        // une miniature (memes quand load_full_album est desactive, Piwigo les
-        // transmet deja pour les photos visibles sur la page), on les utilise
-        // pour recuperer les vraies dimensions (evite le ratio 4/3 par defaut
-        // de PhotoSwipe). Sinon on retombe sur le comportement precedent
-        // (deduit du DOM), sans rien casser.
+        // Comme pour picture.php : si les données serveur sont disponibles
+        // pour une miniature (même avec load_full_album désactivé, Piwigo
+        // les transmet déjà pour les photos visibles sur la page), on les
+        // utilise pour les vraies dimensions (évite le ratio 4/3 par défaut).
+        // Sinon, repli sur le comportement précédent (déduit du DOM).
         const serverItems = (
             typeof VIEWERFORPIWIGO_DATA !== "undefined" &&
             VIEWERFORPIWIGO_DATA.items &&
@@ -990,10 +1050,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (matched) {
                 if (matched.isVideo) {
-                    // Pour une video, on conserve integralement les donnees
-                    // serveur (src = URL video/iframe reelle) : ne surtout pas
-                    // la remplacer par l'image "poster" affichee dans le DOM.
-                    // La legende serveur respecte deja show_caption/
+                    // Pour une vidéo, on conserve les données serveur (src =
+                    // URL réelle) sans la remplacer par l'image « poster » du
+                    // DOM. La légende serveur respecte déjà show_caption/
                     // hide_auto_names : elle prime toujours sur le texte brut
                     // du DOM.
                     return Object.assign({}, matched, {
@@ -1017,18 +1076,15 @@ document.addEventListener("DOMContentLoaded", function () {
         launchViewer(localItems, startIndex);
     }
 
-    // Ouverture depuis les popups de miniatures du plugin OpenStreetMap
-    // (piwigo-openstreetmap), si installe et si l'option est activee.
-    // Ces popups sont injectees dynamiquement par Leaflet au clic sur un
-    // marqueur (jamais presentes au chargement de la page) : une delegation
-    // d'evenements sur le document est donc necessaire, contrairement au
-    // scan ponctuel utilise pour les miniatures classiques de l'album.
-    // Structure de popup confirmee via le code source du plugin OSM
-    // (include/functions_map.php, fonction osm_get_js(), partagee par
-    // toutes ses cartes) : <div class="leaflet-popup-content">...<a href=
-    // "picture.php?/ID/..."><img ...></a>...</div> — la classe
-    // "leaflet-popup-content" vient de Leaflet lui-meme (stable), pas du
-    // plugin OSM (dont les id="thumb-N" sont indexes, donc plus fragiles).
+    // Ouverture depuis les popups de miniatures du plugin OpenStreetMap, si
+    // installé et l'option activée. Ces popups sont injectées par Leaflet au
+    // clic sur un marqueur (jamais présentes au chargement) : délégation
+    // d'événements nécessaire, contrairement au scan ponctuel des miniatures
+    // classiques. Structure confirmée via le code source OSM
+    // (functions_map.php, osm_get_js()) : <div class="leaflet-popup-content">
+    // ...<a href="picture.php?/ID/...">...</a></div> — la classe
+    // "leaflet-popup-content" vient de Leaflet (stable), pas des
+    // id="thumb-N" du plugin OSM (plus fragiles).
     if (isViewerAllowed() && config.open_from_osm_map) {
         document.addEventListener("click", function (e) {
             const link = e.target.closest(".leaflet-popup-content a");
@@ -1038,7 +1094,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const linkId = extractImageIdFromHref(link.href);
 
             // Ni ID extractible ni image : probablement pas une popup photo
-            // (ex. popup GPX du meme plugin) — on ne s'en mele pas.
+            // (ex. popup GPX du même plugin) — on n'intervient pas.
             if (linkId === null && !img) return;
 
             e.preventDefault();
@@ -1061,11 +1117,11 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             if (!items) {
-                // Repli : photo absente des donnees deja chargees pour cette
-                // page (cas frequent d'un marqueur pointant vers une photo
-                // d'un sous-album). Item minimal construit directement
-                // depuis le contenu de la popup, meme principe que le repli
-                // de launchLocalViewer ci-dessus.
+                // Repli : photo absente des données déjà chargées pour cette
+                // page (cas fréquent d'un marqueur pointant vers une photo
+                // d'un sous-album). Item minimal construit depuis le contenu
+                // de la popup, même principe que le repli de
+                // launchLocalViewer ci-dessus.
                 const thumbSrc = img ? (img.dataset.src || img.src) : "";
                 items = [{
                     src: getLargeImage(thumbSrc) || thumbSrc,

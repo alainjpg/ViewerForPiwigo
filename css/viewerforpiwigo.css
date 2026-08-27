@@ -10,16 +10,16 @@
     color: #dddddd;
     line-height: 1.4;
 }
-/* Auteur : information secondaire tres discrete, sur la meme ligne que le
-   titre quand la place le permet (simple retour a la ligne naturel du texte
-   sinon, sans JS ni media query necessaire pour ce cas precis). */
+/* Auteur : information secondaire très discrète, sur la même ligne que le
+   titre quand la place le permet (simple retour à la ligne naturel du texte
+   sinon, sans JS ni media query nécessaire pour ce cas précis). */
 .vfp-author {
     font-size: 0.85em;
     font-weight: 400;
     color: #bbbbbb;
     margin-left: 4px;
 }
-/* Description longue : tronquee visuellement a quelques lignes pour ne pas
+/* Description longue : tronquée visuellement à quelques lignes pour ne pas
    encombrer la visionneuse, avec un lien "Voir plus" vers la page photo. */
 .vfp-description-clamped {
     display: -webkit-box;
@@ -38,7 +38,7 @@
 .vfp-see-more:focus {
     color: #ffffff;
 }
-/* Mobile : encore plus compact pour laisser la place a la photo. */
+/* Mobile : encore plus compact pour laisser la place à la photo. */
 @media (max-width: 600px) {
     .vfp-title {
         font-size: 1em;
@@ -53,13 +53,12 @@
         display: block;
         margin-left: 0;
     }
-    /* Fancybox affiche 3 boutons de zoom separes (zoomIn / zoomOut /
-       toggleFull) contre un seul cote PhotoSwipe. Sur petit ecran, ca peut
-       deborder la barre d'outils et pousser le bouton de fermeture hors de
-       l'ecran. On ne garde que "toggleFull" (bascule 100%/ajuste), qui est
-       l'equivalent fonctionnel du bouton unique de PhotoSwipe.
-       Selecteurs verifies directement dans le DOM rendu (attribut
-       data-panzoom-action), pas devines. */
+    /* Fancybox affiche 3 boutons de zoom séparés (zoomIn / zoomOut /
+       toggleFull) contre un seul côté PhotoSwipe. Sur petit écran, ça peut
+       déborder la barre d'outils et pousser le bouton de fermeture hors de
+       l'écran. On garde seulement "toggleFull" (équivalent du bouton unique
+       PhotoSwipe). Sélecteurs vérifiés dans le DOM rendu (attribut
+       data-panzoom-action), pas devinés. */
     button[data-panzoom-action="zoomIn"],
     button[data-panzoom-action="zoomOut"] {
         display: none !important;
@@ -71,8 +70,8 @@
 
 /* --- PhotoSwipe (moteur experimental 0.0.3) --- */
 .pswp {
-    /* Piwigo (menu compte, barre de theme, etc.) peut definir des elements a
-       z-index tres eleve ; on s'assure que la visionneuse reste toujours au
+    /* Piwigo (menu compte, barre de thème, etc.) peut définir des éléments à
+       z-index très élevé ; on s'assure que la visionneuse reste toujours au
        dessus de tout le reste de la page. */
     --pswp-root-z-index: 999999999;
 }
@@ -84,10 +83,10 @@
     color: #4caf50;
 }
 
-/* Fleches de navigation sur mobile : masquees par defaut sur Fancybox (comme
-   PhotoSwipe le fait deja nativement via .pswp--touch), sauf si l'option
-   "Afficher les fleches de navigation sur mobile" est activee (classe
-   vfp-mobile-arrows ajoutee via l'option mainClass des deux moteurs). */
+/* Flèches de navigation sur mobile : masquées par défaut sur Fancybox (comme
+   PhotoSwipe le fait déjà nativement via .pswp--touch), sauf si l'option
+   "Afficher les flèches de navigation sur mobile" est activée (classe
+   vfp-mobile-arrows ajoutée via l'option mainClass des deux moteurs). */
 @media (max-width: 600px) {
     .fancybox__container:not(.vfp-mobile-arrows) .f-button.is-arrow {
         display: none;
@@ -97,12 +96,48 @@
     visibility: visible;
 }
 
-/* Fancybox : fleches discretes, sans fond circulaire (variables CSS natives
-   du theme Fancybox : --f-arrow-bg vaut par defaut rgba(54,54,54,.65) avec
+/* Fancybox : flèches discrètes, sans fond circulaire (variables CSS natives
+   du thème Fancybox : --f-arrow-bg vaut par défaut rgba(54,54,54,.65) avec
    --f-arrow-border-radius: 50%). */
 .fancybox__container.vfp-flat-arrows {
     --f-arrow-bg: transparent;
     --f-arrow-hover-bg: transparent;
     --f-arrow-active-bg: transparent;
     --f-arrow-border-radius: 0;
+}
+
+/* Bouton indiquant que la photo s'ouvre dans la visionneuse. Position
+   calculée en JS via getBoundingClientRect() plutôt qu'en CSS relatif à un
+   conteneur : jamais inséré comme enfant de #theMainImage ni de la barre
+   d'outils, donc aucun risque de casser leur mise en page propre au thème. */
+.vfp-open-hint {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.55);
+    cursor: pointer;
+}
+.vfp-open-hint--corner {
+    position: absolute;
+    z-index: 999;
+}
+.vfp-open-hint--toolbar {
+    margin: 0 4px;
+    vertical-align: middle;
+}
+/* Mode "disparaît" uniquement : visible brièvement au chargement puis au
+   survol de la photo ou du bouton (classe ajoutée en JS, voir
+   mouseenter/mouseleave et le setTimeout initial). Le mode "toujours
+   visible" n'a pas ce modificateur. */
+.vfp-open-hint--fade {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+.vfp-open-hint--fade.vfp-open-hint--visible {
+    opacity: 1;
 }

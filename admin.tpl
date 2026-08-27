@@ -9,6 +9,8 @@
   .vfp-local-info { margin: 6px 0 10px 0; }
   input.vfp-dimmed { opacity: 0.5; }
   li.vfp-dimmed { opacity: 0.5; }
+  div.vfp-dimmed { opacity: 0.5; }
+  .vfp-suboption { margin: 6px 0 6px 26px; }
 </style>
 
 <form method="post" action="{$VIEWERFORPIWIGO_ADMIN_ACTION}" class="properties">
@@ -97,9 +99,20 @@
       {/if}
       <li>
         <label>
-          <input type="checkbox" name="open_from_picture" value="1" {if !empty($conf_viewerforpiwigo.open_from_picture)}checked="checked"{/if}>
-          <strong>{'Open the viewer from the main image'|@translate}</strong> {'(on the individual photo page)'|@translate}
+          <input type="checkbox" name="open_from_picture" value="1" id="vfp-open-from-picture" {if !empty($conf_viewerforpiwigo.open_from_picture)}checked="checked"{/if}>
+          <strong>{'Open the viewer from a photo page (click/tap on the image)'|@translate}</strong>
         </label>
+        <div class="vfp-suboption{if empty($conf_viewerforpiwigo.open_from_picture)} vfp-dimmed{/if}" id="vfp-open-hint-item">
+          <label>
+            {'Opening button:'|@translate}
+            <select name="open_hint_mode">
+              <option value="never" {if empty($conf_viewerforpiwigo.open_hint_mode) || $conf_viewerforpiwigo.open_hint_mode == 'never'}selected="selected"{/if}>{'Do not show'|@translate}</option>
+              <option value="corner_permanent" {if $conf_viewerforpiwigo.open_hint_mode == 'corner_permanent'}selected="selected"{/if}>{'Always visible, top-right of the image'|@translate}</option>
+              <option value="corner_fade" {if $conf_viewerforpiwigo.open_hint_mode == 'corner_fade'}selected="selected"{/if}>{'Top-right of the image, fades away'|@translate}</option>
+              <option value="toolbar" {if $conf_viewerforpiwigo.open_hint_mode == 'toolbar'}selected="selected"{/if}>{'In the photo page toolbar (appearance varies by theme)'|@translate}</option>
+            </select>
+          </label>
+        </div>
       </li>
       <li>
         <label>
@@ -275,6 +288,18 @@
         }
     }
 
+    function updateOpenHintState() {
+        var openFromPicture = byId('vfp-open-from-picture');
+        var item = byId('vfp-open-hint-item');
+        if (openFromPicture && item) {
+            if (openFromPicture.checked) {
+                item.classList.remove('vfp-dimmed');
+            } else {
+                item.classList.add('vfp-dimmed');
+            }
+        }
+    }
+
     var engineSelect = byId('vfp-viewer-engine');
     if (engineSelect) {
         engineSelect.addEventListener('change', updateEngineDisplay);
@@ -297,10 +322,16 @@
         showCaptionCheckbox.addEventListener('change', updateHideAutoNamesState);
     }
 
+    var openFromPictureCheckbox = byId('vfp-open-from-picture');
+    if (openFromPictureCheckbox) {
+        openFromPictureCheckbox.addEventListener('change', updateOpenHintState);
+    }
+
     // Etat initial (redondant avec le rendu serveur ci-dessus, conserve par
     // securite si jamais les deux etaient amenes a diverger).
     updateEngineDisplay();
     updateMaxItemsState();
     updateHideAutoNamesState();
+    updateOpenHintState();
 })();
 </script>

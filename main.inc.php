@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: ViewerForPiwigo
-Version: 1.3.1
+Version: 1.4.0
 Description: Configurable Fancybox or PhotoSwipe viewer
 Plugin URI: https://piwigo.org/ext/extension_view.php?eid=1107
 Author: Alain.jpg
@@ -36,6 +36,7 @@ function viewerforpiwigo_get_default_config() {
         'image_size'           => 'xlarge',
         'open_from_thumbnails' => true,
         'open_from_picture'    => true,
+        'open_hint_mode'       => 'never', // never | corner_permanent | corner_fade | toolbar
 		'open_from_slideshow'  => true,
 		'open_from_osm_map'    => true,
         'load_full_album'      => true,
@@ -77,12 +78,11 @@ function viewerforpiwigo_unserialize($data) {
     return function_exists('safe_unserialize') ? safe_unserialize($data) : @unserialize($data);
 }
 
-// Migration de l'ancienne case 'disable_slideshow_autoplay' (booleen) vers le
-// nouveau choix a 3 valeurs 'autoplay_mode'. Ne touche jamais une config qui
-// a deja ete enregistree avec 'autoplay_mode' (choix explicite de
-// l'administrateur). Prend le tableau de config brut (avant fusion avec les
-// valeurs par defaut) pour pouvoir distinguer "jamais enregistre" de
-// "deja migre".
+// Migration de l'ancienne case 'disable_slideshow_autoplay' (booléen) vers
+// le choix à 3 valeurs 'autoplay_mode'. Ne touche jamais une config déjà
+// enregistrée avec 'autoplay_mode' (choix explicite de l'administrateur).
+// Prend le tableau brut (avant fusion avec les valeurs par défaut) pour
+// distinguer « jamais enregistré » de « déjà migré ».
 function viewerforpiwigo_migrate_config($raw_config) {
     if (!is_array($raw_config) || isset($raw_config['autoplay_mode'])) {
         return $raw_config;
@@ -133,7 +133,6 @@ function viewerforpiwigo_inject() {
     }
 
     // Détermination des IDs selon la configuration (tout l'album ou page courante)
-// Détermination des IDs selon la configuration
 $items = array();
 
 if (!empty($config['load_full_album']) || !empty($config['open_from_slideshow'])) {

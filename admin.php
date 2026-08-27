@@ -8,17 +8,17 @@ global $template, $page, $conf;
 $plugin_dir = basename(dirname(__FILE__));
 include_once(PHPWG_PLUGINS_PATH . $plugin_dir . '/main.inc.php');
 
-// Detection du plugin OpenStreetMap : methode idiomatique Piwigo (verifier
-// une constante definie par ce plugin dans son propre main.inc.php, deja
-// charge a ce stade si le plugin est actif — meme principe que notre propre
+// Détection du plugin OpenStreetMap : méthode idiomatique Piwigo (vérifier
+// une constante définie par ce plugin dans son propre main.inc.php, déjà
+// chargé à ce stade si actif — même principe que notre propre
 // VIEWERFORPIWIGO_PATH).
 $viewerforpiwigo_osm_active = defined('OSM_PATH');
 
-// Valeur precedemment enregistree, nécessaire pour ne pas ecraser le
-// reglage OSM par "false" si le formulaire est sauvegarde alors que le
+// Valeur précédemment enregistrée, nécessaire pour ne pas écraser le
+// réglage OSM par "false" si le formulaire est sauvegardé alors que le
 // plugin OSM n'est pas actif (la case n'existe alors pas dans le
-// formulaire, donc absente de $_POST — ne pas la confondre avec un choix
-// explicite de decocher).
+// formulaire, donc absente de $_POST — ne pas confondre avec un choix
+// explicite de décocher).
 $viewerforpiwigo_prev_raw = isset($conf['viewerforpiwigo']) ? $conf['viewerforpiwigo'] : null;
 $viewerforpiwigo_prev_config = $viewerforpiwigo_prev_raw
     ? viewerforpiwigo_migrate_config(viewerforpiwigo_unserialize($viewerforpiwigo_prev_raw))
@@ -35,6 +35,7 @@ if (isset($_POST['submit'])) {
         // --- NOUVELLES OPTIONS DE PORTE D'ENTRÉE ET CHARGEMENT ---
 		'open_from_thumbnails' => isset($_POST['open_from_thumbnails']),
         'open_from_picture'    => isset($_POST['open_from_picture']),
+        'open_hint_mode'       => in_array(($_POST['open_hint_mode'] ?? ''), array('never', 'corner_permanent', 'corner_fade', 'toolbar'), true) ? $_POST['open_hint_mode'] : 'never',
 		'open_from_slideshow'  => isset($_POST['open_from_slideshow']),      
 		'open_from_osm_map'    => $viewerforpiwigo_osm_active
 		    ? isset($_POST['open_from_osm_map'])
@@ -92,19 +93,15 @@ $config = array_merge(
     $config
 );
 
-// Tailles d'image proposees dans la configuration : uniquement a partir de
-// "medium" (les tailles plus petites n'ont pas d'interet pour une
-// visionneuse plein ecran), et seulement celles reellement activees sur
-// cette installation Piwigo (voir ImageStdParams::get_defined_type_map(),
-// qui est le mecanisme natif de Piwigo pour connaitre les tailles
-// effectivement disponibles — cf. reflexion menee avec l'utilisateur).
+// Tailles proposées à partir de "medium" (les plus petites n'ont pas
+// d'intérêt pour une visionneuse plein écran), et seulement celles
+// réellement activées sur cette installation Piwigo (voir
+// ImageStdParams::get_defined_type_map()).
 // IMG_MEDIUM/LARGE/XLARGE/XXLARGE existent depuis toujours dans Piwigo.
-// IMG_3XLARGE/IMG_4XLARGE sont plus recentes (Piwigo 16) : sur une version
-// plus ancienne (ex. Piwigo 14), ces constantes n'existent pas du tout, et
-// les referencer directement dans le tableau ci-dessous provoquerait une
-// erreur fatale "Undefined constant" (PHP 8+ evalue tout le tableau
-// immediatement, meme si l'entree n'est jamais utilisee ensuite). D'ou la
-// verification defined() avant de les ajouter.
+// IMG_3XLARGE/IMG_4XLARGE sont plus récentes (Piwigo 16) : sur une version
+// antérieure ces constantes n'existent pas, et les référencer directement
+// provoquerait une erreur fatale "Undefined constant" (PHP 8+ évalue tout
+// le tableau immédiatement) — d'où la vérification defined().
 $viewerforpiwigo_size_order = array(IMG_MEDIUM, IMG_LARGE, IMG_XLARGE, IMG_XXLARGE);
 if (defined('IMG_3XLARGE')) {
     $viewerforpiwigo_size_order[] = IMG_3XLARGE;
@@ -121,9 +118,9 @@ foreach ($viewerforpiwigo_size_order as $viewerforpiwigo_size_type) {
     }
 }
 
-// Filet de securite : si la detection ne renvoie rien (version de Piwigo
+// Filet de sécurité : si la détection ne renvoie rien (version de Piwigo
 // sans ces constantes, erreur inattendue...), on retombe sur l'ancienne
-// liste fixe plutot que d'afficher un menu vide.
+// liste fixe plutôt que d'afficher un menu vide.
 if (empty($available_sizes)) {
     $available_sizes = array('medium', 'large', 'xlarge', 'xxlarge');
 }
