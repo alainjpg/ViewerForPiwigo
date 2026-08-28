@@ -196,6 +196,26 @@ document.addEventListener("DOMContentLoaded", function () {
 				};
 			}
 
+			// PDF : Piwigo genere automatiquement un apercu de la 1ere page
+			// (utilise comme thumbSrc/miniature), le vrai fichier reste
+			// accessible via download_src. Fancybox reconnait nativement
+			// type "pdf" (meme traitement interne que ses iframes).
+			if (/\.pdf$/i.test(item.file)) {
+				return {
+					id: item.id,
+					isPdf: true,
+					thumbSrc: item.src,
+					src: item.download_src,
+					width: item.width || 0,
+					height: item.height || 0,
+					type: "pdf",
+					caption: captionHtml,
+					plainCaption: caption,
+					downloadSrc: item.download_src,
+					pageUrl: item.page_url
+				};
+			}
+
 			// Images
 			return {
 				id: item.id,
@@ -796,6 +816,18 @@ document.addEventListener("DOMContentLoaded", function () {
                 };
             }
 
+            if (item.isPdf) {
+                const pdfHtml = '<iframe src="' + item.src + '" style="width:100%;height:100%;border:0;background:#fff"></iframe>';
+                return {
+                    html: pdfHtml,
+                    width: item.width || 1600,
+                    height: item.height || 1200,
+                    alt: item.plainCaption || item.caption || "",
+                    caption: item.caption || "",
+                    pageUrl: item.pageUrl
+                };
+            }
+
             return {
                 src: item.src,
                 width: item.width || 1600,
@@ -1049,12 +1081,12 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             if (matched) {
-                if (matched.isVideo) {
-                    // Pour une vidéo, on conserve les données serveur (src =
-                    // URL réelle) sans la remplacer par l'image « poster » du
-                    // DOM. La légende serveur respecte déjà show_caption/
-                    // hide_auto_names : elle prime toujours sur le texte brut
-                    // du DOM.
+                if (matched.isVideo || matched.isPdf) {
+                    // Pour une vidéo ou un PDF, on conserve les données
+                    // serveur (src = URL réelle) sans la remplacer par
+                    // l'image « poster »/aperçu du DOM. La légende serveur
+                    // respecte déjà show_caption/hide_auto_names : elle
+                    // prime toujours sur le texte brut du DOM.
                     return Object.assign({}, matched, {
                         caption: matched.caption
                     });
