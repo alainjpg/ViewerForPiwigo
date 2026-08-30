@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: ViewerForPiwigo
-Version: 1.5.1
+Version: 1.6.0
 Description: Configurable Fancybox or PhotoSwipe viewer
 Plugin URI: https://piwigo.org/ext/extension_view.php?eid=1107
 Author: Alain.jpg
@@ -278,6 +278,35 @@ var VIEWERFORPIWIGO_DATA = ' . json_encode(array(
         'page_link' => l10n('Open the photo page'),
         'autoplay'  => l10n('Start / Stop slideshow'),
         'see_more'  => l10n('See more')
+    ),
+    // Traductions des commandes natives des deux moteurs (Fancybox expose
+    // une option l10n documentee ; PhotoSwipe n'a que 4 textes en dur,
+    // remplaces directement dans le DOM cote JS).
+    'fancybox_l10n'    => array(
+        'CLOSE'              => l10n('Close'),
+        'NEXT'               => l10n('Next'),
+        'PREV'               => l10n('Previous'),
+        'MODAL'              => l10n('You can close this modal content with the ESC key'),
+        'ELEMENT_NOT_FOUND'  => l10n('HTML Element Not Found'),
+        'IFRAME_ERROR'       => l10n('Error Loading Page'),
+        'NO_CAPTION'         => l10n('No Caption'),
+        'ERROR'              => l10n('Something went wrong, please try again later'),
+        'GOTO'               => l10n('Go to slide #%d'),
+        'DOWNLOAD'           => l10n('Download'),
+        'TOGGLE_FULLSCREEN'  => l10n('Toggle full-screen mode'),
+        'TOGGLE_THUMBS'      => l10n('Toggle thumbnails'),
+        'TOGGLE_AUTOPLAY'    => l10n('Toggle slideshow'),
+        'ZOOM_IN'            => l10n('Zoom in'),
+        'ZOOM_OUT'           => l10n('Zoom out'),
+        'TOGGLE_1TO1'        => l10n('Toggle zoom level'),
+        'TOGGLE_FULL'        => l10n('Toggle zoom level'),
+        'IMAGE_ERROR'        => l10n('This image could not be loaded')
+    ),
+    'pswp_l10n'        => array(
+        'PREV'  => l10n('Previous'),
+        'NEXT'  => l10n('Next'),
+        'CLOSE' => l10n('Close'),
+        'ZOOM'  => l10n('Zoom')
     )
 ), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) . ';
     </script>

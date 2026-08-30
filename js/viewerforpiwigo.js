@@ -623,6 +623,7 @@ document.addEventListener("DOMContentLoaded", function () {
             dragToClose: true,
             mainClass: fancyboxMainClasses.join(" "),
             idle: config.auto_hide_controls ? 3500 : false,
+            l10n: (typeof VIEWERFORPIWIGO_DATA !== "undefined" && VIEWERFORPIWIGO_DATA.fancybox_l10n) ? VIEWERFORPIWIGO_DATA.fancybox_l10n : {},
             on: {
                 "ready Carousel.change Carousel.autoplay:start": fancyboxHandleSlideChange
             },
@@ -949,7 +950,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     order: 8,
                     isButton: true,
                     tagName: "a",
-                    title: "Download",
+                    title: (typeof VIEWERFORPIWIGO_DATA !== "undefined" && VIEWERFORPIWIGO_DATA.fancybox_l10n && VIEWERFORPIWIGO_DATA.fancybox_l10n.DOWNLOAD) || "Download",
                     html: {
                         isCustomSVG: true,
                         inner: '<path d="M16 6v12" fill="none" stroke="var(--pswp-icon-color, #fff)" stroke-width="2" stroke-linecap="round"/><path d="M9 16l7 7 7-7" fill="none" stroke="var(--pswp-icon-color, #fff)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 26h20" fill="none" stroke="var(--pswp-icon-color, #fff)" stroke-width="2" stroke-linecap="round"/>',
@@ -976,7 +977,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     name: "fbv-fullscreen",
                     order: 15,
                     isButton: true,
-                    title: "Fullscreen",
+                    title: (typeof VIEWERFORPIWIGO_DATA !== "undefined" && VIEWERFORPIWIGO_DATA.fancybox_l10n && VIEWERFORPIWIGO_DATA.fancybox_l10n.TOGGLE_FULLSCREEN) || "Fullscreen",
                     html: {
                         isCustomSVG: true,
                         inner: '<path d="M6 13V6h7M26 13V6h-7M6 19v7h7M26 19v7h-7" fill="none" stroke="var(--pswp-icon-color, #fff)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -1085,6 +1086,34 @@ document.addEventListener("DOMContentLoaded", function () {
                 pswpStartAutoplay();
             });
         }
+
+        // PhotoSwipe n'expose aucune option de traduction (contrairement a
+        // Fancybox) : ses 4 textes natifs (Previous/Next/Close/Zoom) sont
+        // codes en dur dans sa propre definition d'elements UI. On les
+        // corrige apres coup, une fois les boutons rendus dans le DOM.
+        // Recherche scopee a pswpInstance.element (la racine .pswp propre a
+        // CETTE instance, confirmee dans le code source) plutot qu'un
+        // document.querySelector global, qui pourrait cibler une instance
+        // residuelle differente.
+        function patchPswpTitles() {
+            const pswpL10n = (typeof VIEWERFORPIWIGO_DATA !== "undefined" && VIEWERFORPIWIGO_DATA.pswp_l10n) ? VIEWERFORPIWIGO_DATA.pswp_l10n : {};
+            const root = pswpInstance && pswpInstance.element;
+            if (!root) return;
+            function patchTitle(selector, text) {
+                if (!text) return;
+                const el = root.querySelector(selector);
+                if (el) {
+                    el.setAttribute("title", text);
+                    el.setAttribute("aria-label", text);
+                }
+            }
+            patchTitle(".pswp__button--arrow--prev", pswpL10n.PREV);
+            patchTitle(".pswp__button--arrow--next", pswpL10n.NEXT);
+            patchTitle(".pswp__button--close", pswpL10n.CLOSE);
+            patchTitle(".pswp__button--zoom", pswpL10n.ZOOM);
+        }
+        pswpInstance.on("afterInit", patchPswpTitles);
+        pswpInstance.on("change", patchPswpTitles);
 
         pswpInstance.init();
     }
