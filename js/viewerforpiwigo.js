@@ -98,6 +98,46 @@ document.addEventListener("DOMContentLoaded", function () {
         return div.innerHTML;
     }
 
+    // Piwigo autorise un sous-ensemble de HTML (gras, italique, lien, saut de
+    // ligne...) dans le titre/la description/l'auteur d'une photo, entre
+    // dans son admin. On l'interprete plutot que de tout echapper, tout en
+    // filtrant les balises et attributs non autorises (protection contre un
+    // <script>, des attributs onclick/onerror, ou un lien javascript:).
+    const RICH_TEXT_ALLOWED_TAGS = { b: 1, strong: 1, i: 1, em: 1, u: 1, br: 1, a: 1, span: 1, small: 1, sup: 1, sub: 1 };
+    const RICH_TEXT_ALLOWED_ATTRS = { a: ["href", "title", "target", "rel"] };
+
+    function sanitizeRichTextNode(node) {
+        Array.from(node.childNodes).forEach(child => {
+            if (child.nodeType === 1) {
+                sanitizeRichTextNode(child);
+                const tag = child.tagName.toLowerCase();
+                if (!RICH_TEXT_ALLOWED_TAGS[tag]) {
+                    while (child.firstChild) node.insertBefore(child.firstChild, child);
+                    node.removeChild(child);
+                    return;
+                }
+                const allowedAttrs = RICH_TEXT_ALLOWED_ATTRS[tag] || [];
+                Array.from(child.attributes).forEach(attr => {
+                    if (allowedAttrs.indexOf(attr.name) === -1) {
+                        child.removeAttribute(attr.name);
+                    } else if (attr.name === "href" && !/^(https?:|mailto:|tel:|\/|#)/i.test(attr.value.trim())) {
+                        child.removeAttribute("href");
+                    }
+                });
+            } else if (child.nodeType !== 3) {
+                node.removeChild(child);
+            }
+        });
+    }
+
+    function sanitizeRichText(str) {
+        if (!str) return "";
+        const div = document.createElement("div");
+        div.innerHTML = str;
+        sanitizeRichTextNode(div);
+        return div.innerHTML;
+    }
+
     // Construit le HTML titre/auteur/description commun aux deux moteurs,
     // en réutilisant les classes .vfp-title/.vfp-description déjà
     // présentes dans le CSS du plugin.
@@ -106,14 +146,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (title || author) {
             html += '<div class="vfp-title">';
-            if (title) html += escapeHtml(title);
-            if (author) html += ' <span class="vfp-author">(' + escapeHtml(author) + ')</span>';
+            if (title) html += sanitizeRichText(title);
+            if (author) html += ' <span class="vfp-author">(' + sanitizeRichText(author) + ')</span>';
             html += '</div>';
         }
 
         if (description) {
             const isLong = description.length > DESCRIPTION_TRUNCATE_THRESHOLD;
-            html += '<div class="vfp-description' + (isLong ? ' vfp-description-clamped' : '') + '">' + escapeHtml(description) + '</div>';
+            html += '<div class="vfp-description' + (isLong ? ' vfp-description-clamped' : '') + '">' + sanitizeRichText(description) + '</div>';
             if (isLong && pageUrl) {
                 const seeMoreText = (typeof VIEWERFORPIWIGO_DATA !== "undefined" && VIEWERFORPIWIGO_DATA.lang && VIEWERFORPIWIGO_DATA.lang.see_more) ? VIEWERFORPIWIGO_DATA.lang.see_more : "See more";
                 html += '<a class="vfp-see-more" href="' + pageUrl + '">' + escapeHtml(seeMoreText) + '</a>';
