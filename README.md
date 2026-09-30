@@ -20,7 +20,7 @@ The viewer can be configured for different uses: slideshow, album thumbnails, or
 
 ## Fancybox
 
-This plugin currently uses **Fancybox 6.1.14**.
+This plugin currently uses **Fancybox 6.1.15**.
 
 Fancybox is subject to its own licensing terms and may require a commercial license depending on the intended use.
 

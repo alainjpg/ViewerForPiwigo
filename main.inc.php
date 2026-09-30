@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: ViewerForPiwigo
-Version: 1.6.0
+Version: 1.6.1
 Description: Configurable Fancybox or PhotoSwipe viewer
 Plugin URI: https://piwigo.org/ext/extension_view.php?eid=1107
 Author: Alain.jpg
@@ -256,8 +256,8 @@ if (!empty($config['load_full_album']) || !empty($config['open_from_slideshow'])
         }
     } else {
         if (isset($config['fancybox_source']) && $config['fancybox_source'] === 'cdn') {
-            $viewer_css = 'https://cdn.jsdelivr.net/npm/@fancyapps/ui@6.1.14/dist/fancybox/fancybox.css';
-            $viewer_js  = 'https://cdn.jsdelivr.net/npm/@fancyapps/ui@6.1.14/dist/fancybox/fancybox.umd.js';
+            $viewer_css = 'https://cdn.jsdelivr.net/npm/@fancyapps/ui@6.1.15/dist/fancybox/fancybox.css';
+            $viewer_js  = 'https://cdn.jsdelivr.net/npm/@fancyapps/ui@6.1.15/dist/fancybox/fancybox.umd.js';
         } else {
             $viewer_css = VIEWERFORPIWIGO_PATH . 'vendor/fancybox/fancybox.css';
             $viewer_js  = VIEWERFORPIWIGO_PATH . 'vendor/fancybox/fancybox.umd.js';
